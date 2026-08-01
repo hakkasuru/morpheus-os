@@ -1,6 +1,6 @@
 # Preferences
 
-> Personal conventions the agent reads at session start and applies across all work. Kept out of AGENTS.md so harness upgrades never clobber personal taste. Uncomment and edit to activate.
+> Personal conventions the agent reads at session start and applies across all work; kept out of AGENTS.md so harness upgrades never clobber personal taste; the agent offers to append here (dated) when the human corrects the same thing twice. Uncomment and edit to activate.
 
 ## Git & Delivery
 
@@ -34,9 +34,10 @@ Max clarifying questions before proceeding
 - Max questions: 3 before proceeding
 
 Risk tolerance
-- Safety: ask before any schema change
+- Safety: ask before any schema change; proceed on low-risk refactors
 -->
 
 ## Log
 
-<!-- Dated entries appended here when preferences are recorded mid-work, format: - YYYY-MM-DD — <preference> -->
+<!-- The agent appends a dated entry here after offering, when the human corrects the same thing twice.
+Format: - YYYY-MM-DD — <preference> -->
