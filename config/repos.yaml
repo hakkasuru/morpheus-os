@@ -2,7 +2,8 @@
 # Replace the examples below with your own repositories.
 #
 # Fields per entry:
-#   id:             directory name under repos/ (required)
+#   id:             directory name under repos/ (required, and must be the
+#                   entry's first key: write "- id: <name>")
 #   remote:         git clone URL (required)
 #   host:           gitlab | github — OPTIONAL, auto-detected from remote URL;
 #                   set explicitly only for self-hosted instances on custom domains

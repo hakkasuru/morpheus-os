@@ -27,11 +27,13 @@ fi
 # --- basics -----------------------------------------------------------------
 
 # mos_root — absolute path of the workspace root (the parent of scripts/).
+# Computed on every call, never cached in a variable: a cache the environment can
+# pre-seed would let an inherited value silently relocate the whole workspace.
 mos_root() {
-  if [ -z "${MOS_ROOT_CACHE:-}" ]; then
-    MOS_ROOT_CACHE=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
-  fi
-  printf '%s\n' "$MOS_ROOT_CACHE"
+  local root
+  root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P) ||
+    mos_die "cannot resolve the workspace root from ${BASH_SOURCE[0]}"
+  printf '%s\n' "$root"
 }
 
 # mos_die "<msg>" — print an error to stderr and exit 1.
@@ -115,12 +117,14 @@ mos_registry_path() {
   printf '%s/config/repos.yaml\n' "$(mos_root)"
 }
 
-# mos__yaml_query <ids|field|commands> [id] [field]
+# mos__yaml_query <ids|field|commands> [id] [field] [warn]
+# warn=1 reports list items this parser has to skip; only mos_yaml_repo_ids asks
+# for it, so a single command prints such a warning once rather than per query.
 mos__yaml_query() {
-  local mode="$1" want_id="${2:-}" want_field="${3:-}" registry
+  local mode="$1" want_id="${2:-}" want_field="${3:-}" warn="${4:-0}" registry
   registry=$(mos_registry_path)
   [ -f "$registry" ] || mos_die "registry not found: $registry"
-  awk -v mode="$mode" -v want_id="$want_id" -v want_field="$want_field" \
+  awk -v mode="$mode" -v want_id="$want_id" -v want_field="$want_field" -v warn="$warn" \
     "$(mos__awk_scalar)"'
 {
   line = $0
@@ -128,17 +132,29 @@ mos__yaml_query() {
   if (line ~ /^[ \t]*#/) next
   indent = match(line, /[^ ]/) - 1
 
-  # entry start: "  - id: <value>"
-  if (line ~ /^[ ]*-[ ]+id:/) {
-    p = index(line, "id:")
-    field_indent = p - 1
-    entry_indent = indent
-    cmd_indent = -1
-    in_commands = 0
-    cur = mos_scalar(substr(line, p + 3), 1)
-    in_entry = (cur == want_id)
-    if (mode == "ids" && cur != "") print cur
-    next
+  if (line ~ /^[ ]*-([ ]|$)/) {          # a sequence item
+    # entry start: "  - id: <value>"
+    if (line ~ /^[ ]*-[ ]+id:/) {
+      p = index(line, "id:")
+      field_indent = p - 1
+      entry_indent = indent
+      cmd_indent = -1
+      in_commands = 0
+      cur = mos_scalar(substr(line, p + 3), 1)
+      in_entry = (cur == want_id)
+      if (mode == "ids" && cur != "") print cur
+      next
+    }
+    # A registry entry is recognised by "id:" being its first key. Anything else
+    # is skipped — say so instead of dropping the entry silently.
+    if (entry_indent == "" || indent == entry_indent) {
+      in_entry = 0
+      in_commands = 0
+      if (warn == 1) {
+        printf "warning: %s:%d: sequence item has no \"id:\" as its first key — this entry is ignored; write it as \"- id: <name>\"\n", FILENAME, FNR > "/dev/stderr"
+      }
+      next
+    }
   }
   if (field_indent == 0) next            # nothing seen yet: outside all entries
   if (indent <= entry_indent) {          # dedented out of the entry list
@@ -181,8 +197,10 @@ END { if (mode == "field") exit (found ? 0 : 1) }
 }
 
 # mos_yaml_repo_ids — every top-level entry id, one per line.
+# This is the registry-wide read, so it is the one that warns about entries the
+# parser had to skip.
 mos_yaml_repo_ids() {
-  mos__yaml_query ids
+  mos__yaml_query ids "" "" 1
 }
 
 # mos_yaml_repo_field <id> <field> — scalar field of one entry.
@@ -199,6 +217,8 @@ mos_yaml_repo_commands() {
 }
 
 # mos_repo_registered <id> — true when the id exists in the registry.
+# Queries quietly: the callers that report a miss print the id list themselves
+# (via mos_yaml_repo_ids), which is where the skipped-entry warning belongs.
 mos_repo_registered() {
   local want="${1:-}" id
   [ -n "$want" ] || return 1
@@ -207,7 +227,7 @@ mos_repo_registered() {
       return 0
     fi
   done <<EOF
-$(mos_yaml_repo_ids)
+$(mos__yaml_query ids)
 EOF
   return 1
 }

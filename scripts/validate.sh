@@ -167,6 +167,15 @@ validate_work_doc() {
   [ "$doc" = "task.md" ] || return 0
 
   # Phase-doc honesty: a phase document may not exist before its phase.
+  #
+  # Exempt: blocked and cancelled are orthogonal to phase progression, not points
+  # along it — a task that reached verifying and then became blocked legitimately
+  # keeps its 04-verification.md. An empty status is already an error above, so
+  # judging its phase docs would only add noise.
+  if [ -z "$status" ] || in_set "$status" "blocked cancelled"; then
+    return 0
+  fi
+
   check
   if [ -f "$folder/01-context.md" ] && [ "$status" = "intake" ]; then
     v_error "$where: 01-context.md exists while status is intake — advance status to context or delete the file"
