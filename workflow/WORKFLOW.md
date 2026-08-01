@@ -22,7 +22,8 @@ Exception states (not on the pipeline):
 - `cancelled` — terminal. Move the folder to `work/done/` like `done`.
 
 Status lives in `task.md` (or `epic.md`) frontmatter `status:`. The folder a
-work item sits in is its coarse state:
+work item sits in is its coarse state — this table applies to TOP-LEVEL work
+items only (standalone tasks/stories, and epics themselves):
 
 | Folder           | Legal status                          |
 |------------------|----------------------------------------|
@@ -31,8 +32,17 @@ work item sits in is its coarse state:
 | `work/done/`      | `done`, `cancelled`                     |
 
 Moving the folder and updating `status:` are one atomic edit — never do one
-without the other. `scripts/validate.sh` cross-checks folder vs. status, and
-that phase docs exist only from the status onward that creates them.
+without the other. `scripts/validate.sh` cross-checks folder vs. status for
+top-level items, and that phase docs exist only from the status onward that
+creates them.
+
+Epic children are the exception: a child story/task lives inside its epic's
+folder (`work/<coarse-state>/E-.../<child-id>/`) for its ENTIRE lifecycle,
+from `intake` to `done`|`cancelled` — it never moves on its own. The folder
+column above does not constrain a child's status; only the EPIC's own folder
+moves, as the unit, `backlog/` → `active/` → `done/`, and only when *all* of
+its children are `done` or `cancelled` does the epic (and everything nested
+under it) move to `work/done/`.
 
 ## Human gates
 
@@ -79,8 +89,12 @@ An epic runs `context` and `planning` once, at the epic level: its
 `## Stories` list. Once approved, each child story/task — a subfolder
 scaffolded with e.g. `scripts/new-work.sh story "Add payment retry logic"
 --parent work/active/E-20260801-payments-v2` — runs the full workflow
-individually, from its own `context` phase. While children are in flight, the
-epic's own `status:` reflects the furthest-behind child.
+individually, from its own `context` phase, entirely inside the epic's
+folder: a child's own status moves from `intake` through `done`|`cancelled`
+without ever relocating itself (see § States). While children are in flight,
+the epic's own `status:` reflects the furthest-behind child. The epic's
+folder moves to `work/done/` only once every child is `done` or `cancelled` —
+per § States, that move carries the whole epic subtree, children included.
 
 ## Activity discipline
 

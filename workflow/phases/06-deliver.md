@@ -26,14 +26,24 @@ Verification is complete and everything is green. Status is `delivering`.
    - Check every doc in `knowledge/repos/<affected-repo>/` against the
      delivered diff — update or deprecate any claim the diff invalidates.
    - Update the affected `index.md` files.
-5. Close out: `task.md` `status: done`, append the `## Activity` line, move
-   the folder to `work/done/`, and
-   `scripts/worktree.sh remove <repo-id> <work-id>` for each affected repo.
+5. Close out: `task.md`/`epic.md` `status: done`, append the `## Activity`
+   line, and `scripts/worktree.sh remove <repo-id> <work-id>` for each
+   affected repo. How the folder moves depends on what kind of work item this
+   is (per `workflow/WORKFLOW.md` § States):
+   - Top-level item (standalone task/story, or an epic): move its folder to
+     `work/done/`.
+   - Epic CHILD (a story/task nested under `work/<state>/E-.../`): do NOT
+     move its folder — it stays inside the epic for its whole lifecycle.
+     Only update its `status:`/`## Activity`, then check off its line in the
+     epic's own `epic.md` `## Stories` checklist. Once every child is
+     `done`|`cancelled`, move the EPIC's own folder to `work/done/` (this
+     carries the whole subtree, children included).
 
 ## Exit
 
-`status: done`, folder under `work/done/`, no worktrees remaining for this
-work item.
+`status: done`, no worktrees remaining for this work item. Folder under
+`work/done/` for a top-level item or a fully-closed epic; an epic child stays
+in place inside its epic's folder.
 
 ## Hard rules
 

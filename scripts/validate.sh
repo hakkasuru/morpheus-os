@@ -42,7 +42,7 @@ case "${1:-}" in
 esac
 [ $# -le 1 ] || usage_error "validate.sh takes no arguments"
 
-# Constraint 5: the twelve legal work-item statuses.
+# The twelve legal work-item statuses — see workflow/WORKFLOW.md.
 STATUSES="intake context planning plan-review impl-planning impl-review executing verifying delivering done blocked cancelled"
 WORK_TYPES="task story epic"
 KB_TYPES="Note Decision Runbook Reference"
@@ -70,6 +70,20 @@ check() {
 in_set() {
   case " $2 " in
     *" $1 "*) return 0 ;;
+  esac
+  return 1
+}
+
+# is_epic_child_folder <folder-relative-to-root> — true when the folder sits
+# nested inside an epic folder (a segment starting with "E-" between
+# work/<state>/ and the item), e.g. work/active/E-.../T-.../. Per
+# workflow/WORKFLOW.md § States, epic children live inside their epic's
+# folder for their whole lifecycle — the folder<->status agreement rules
+# apply only to top-level items (standalone work items, and epics
+# themselves), so callers skip that check for these.
+is_epic_child_folder() {
+  case "$1" in
+    work/backlog/E-*/* | work/active/E-*/* | work/done/E-*/*) return 0 ;;
   esac
   return 1
 }
@@ -141,10 +155,12 @@ validate_work_doc() {
     v_error "$where: status '$status' is not one of: $STATUSES"
   fi
 
-  # Folder (coarse state) must agree with status (phase).
+  # Folder (coarse state) must agree with status (phase). Top-level items
+  # only — an epic child keeps whatever status it likes in place, see
+  # is_epic_child_folder above.
   # Skipped when status is empty — that is already reported above.
   check
-  if [ -n "$status" ]; then
+  if [ -n "$status" ] && ! is_epic_child_folder "$(rel "$folder")"; then
     case "$(rel "$folder")" in
       work/done/*)
         if ! in_set "$status" "done cancelled"; then

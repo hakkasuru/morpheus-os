@@ -57,7 +57,8 @@ The human says "add repo `<url>`", or this runbook is invoked from within
    entry under `commands:`.
 
 5. Seed the knowledge-base section. Create `knowledge/repos/<id>/` with:
-   - `index.md` (constraint 7 bullet format, no frontmatter).
+   - `index.md` (same `* [Title](path.md) - description` bullet format as
+     the other `knowledge/**/index.md` files, no frontmatter).
    - `architecture.md` — from `templates/knowledge/note.md`, `type: Note`,
      `status: draft`, `repo: <id>`, `generated_by: <your agent name>`.
    - `conventions.md` — same template/status/repo/generated_by.
