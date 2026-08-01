@@ -1,0 +1,11 @@
+repos/*
+!repos/.gitkeep
+worktrees/*
+!worktrees/.gitkeep
+
+.superpowers/
+.env
+*.secret
+*.token
+credentials.*
+.DS_Store
