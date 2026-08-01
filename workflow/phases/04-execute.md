@@ -6,12 +6,12 @@ The implementation plan is approved. Status is `executing`.
 
 ## Steps
 
-1. For each affected repo, create its worktree:
+1. For each affected repo, create its worktree once:
    `scripts/worktree.sh add <repo-id> <work-id>`. ALWAYS work inside the
-   worktree — never in `repos/<id>` directly. If parallel tasks or
-   subagents touch the same repo concurrently, give each its own worktree
-   (`worktree.sh add` again is not needed if one already exists for this
-   work-id — reuse it; only give separate work-ids separate worktrees).
+   worktree — never in `repos/<id>` directly. The worktree is scoped to
+   this work-id: reuse the same one for every step against this repo;
+   parallel subagents only get separate worktrees when they belong to
+   different work-ids.
 2. For each step in `03-implementation-plan.md`, dispatch an implementation
    subagent with a self-contained brief: goal, worktree path, exact files,
    constraints, and the verify command. One subagent per step. Independent

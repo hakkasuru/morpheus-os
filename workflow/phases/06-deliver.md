@@ -17,7 +17,9 @@ Verification is complete and everything is green. Status is `delivering`.
    - Push the branch from its worktree: `git push -u origin work/<work-id>`.
    - Create the MR: GitLab host → `glab mr create` (source branch, target
      `default_branch`, title, description); GitHub host → `gh pr create`.
-   - Record the MR URL in `task.md` `mr:`.
+   - Record the MR URL in `task.md` `mr:`, and append the gate-3 approval
+     record to `## Activity`:
+     `- YYYY-MM-DD — delivery approved, MR created: <url>`.
 4. Write-time KB harvest (checklist, do not skip any item):
    - Draft new-learning docs from `templates/knowledge/` for anything
      learned this task.
