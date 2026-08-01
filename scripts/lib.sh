@@ -1,0 +1,311 @@
+#!/usr/bin/env bash
+# lib.sh — shared helpers for the Morpheus OS scripts.
+# Sourced by sync-repos.sh, new-work.sh, worktree.sh, validate.sh.
+# bash 3.2 compatible; no GNU-only flags. No side effects on source.
+set -euo pipefail
+
+# --- guard: this file is a library ------------------------------------------
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+  case "${1:-}" in
+    -h | --help)
+      cat <<'EOF'
+Usage: . scripts/lib.sh
+
+Shared helper library for the Morpheus OS scripts. Not executable on its own;
+source it from another script:
+
+  SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd -P)
+  . "$SCRIPT_DIR/lib.sh"
+EOF
+      exit 0
+      ;;
+  esac
+  printf 'error: %s is meant to be sourced, not executed\n' "${BASH_SOURCE[0]}" >&2
+  exit 2
+fi
+
+# --- basics -----------------------------------------------------------------
+
+# mos_root — absolute path of the workspace root (the parent of scripts/).
+mos_root() {
+  if [ -z "${MOS_ROOT_CACHE:-}" ]; then
+    MOS_ROOT_CACHE=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
+  fi
+  printf '%s\n' "$MOS_ROOT_CACHE"
+}
+
+# mos_die "<msg>" — print an error to stderr and exit 1.
+mos_die() {
+  printf 'error: %s\n' "$*" >&2
+  exit 1
+}
+
+# mos_warn "<msg>" — print a warning to stderr; never fatal.
+mos_warn() {
+  printf 'warning: %s\n' "$*" >&2
+  return 0
+}
+
+# mos_today — UTC date as YYYY-MM-DD.
+mos_today() {
+  date -u +%Y-%m-%d
+}
+
+# mos_today_compact — UTC date as YYYYMMDD.
+mos_today_compact() {
+  date -u +%Y%m%d
+}
+
+# mos_days_ago_iso <n> — UTC date n days ago as YYYY-MM-DD.
+# Uses perl because `date -d` (GNU) and `date -v` (BSD) are both non-portable.
+# Returns 1 without output when perl is unavailable, so callers can skip.
+mos_days_ago_iso() {
+  local days="${1:-0}"
+  case "$days" in
+    '' | *[!0-9]*) return 1 ;;
+  esac
+  command -v perl >/dev/null 2>&1 || return 1
+  perl -e 'my @t = gmtime(time - $ARGV[0] * 86400); printf "%04d-%02d-%02d\n", $t[5]+1900, $t[4]+1, $t[3];' "$days"
+}
+
+# mos_slugify "<string>" — lowercase, non-alphanumerics to "-", squeezed/trimmed.
+# LC_ALL=C keeps `tr`/`sed` byte-oriented (macOS tr rejects multibyte input
+# otherwise). The result goes through a variable so the trailing newline is
+# ours: fed input without a final newline, BSD sed emits none and GNU sed does.
+mos_slugify() {
+  local slug
+  slug=$(printf '%s' "${1:-}" |
+    LC_ALL=C tr '\n' '-' |
+    LC_ALL=C tr '[:upper:]' '[:lower:]' |
+    LC_ALL=C sed -e 's/[^a-z0-9]/-/g' -e 's/--*/-/g' -e 's/^-//' -e 's/-*$//')
+  printf '%s\n' "$slug"
+}
+
+# --- YAML (registry) parsing ------------------------------------------------
+# One awk program serves all registry queries so there is exactly one parser.
+# It is indentation-aware: an entry starts at "  - id: <value>", the entry's own
+# scalar fields sit at the indent of that "id" key, and anything deeper (the
+# commands: sub-block) can never leak into a field lookup.
+
+# mos__awk_scalar — awk prelude: value trimming / unquoting helpers.
+mos__awk_scalar() {
+  cat <<'AWK'
+function mos_trim(v) {
+  sub(/^[ \t]+/, "", v)
+  sub(/[ \t]+$/, "", v)
+  return v
+}
+function mos_scalar(v, strip_comment,   q, first, last) {
+  if (strip_comment) sub(/[ \t]+#.*$/, "", v)
+  v = mos_trim(v)
+  q = sprintf("%c", 39)
+  if (length(v) >= 2) {
+    first = substr(v, 1, 1)
+    last = substr(v, length(v), 1)
+    if ((first == "\"" && last == "\"") || (first == q && last == q))
+      v = substr(v, 2, length(v) - 2)
+  }
+  return v
+}
+AWK
+}
+
+# mos_registry_path — absolute path of config/repos.yaml.
+mos_registry_path() {
+  printf '%s/config/repos.yaml\n' "$(mos_root)"
+}
+
+# mos__yaml_query <ids|field|commands> [id] [field]
+mos__yaml_query() {
+  local mode="$1" want_id="${2:-}" want_field="${3:-}" registry
+  registry=$(mos_registry_path)
+  [ -f "$registry" ] || mos_die "registry not found: $registry"
+  awk -v mode="$mode" -v want_id="$want_id" -v want_field="$want_field" \
+    "$(mos__awk_scalar)"'
+{
+  line = $0
+  if (line ~ /^[ \t]*$/) next
+  if (line ~ /^[ \t]*#/) next
+  indent = match(line, /[^ ]/) - 1
+
+  # entry start: "  - id: <value>"
+  if (line ~ /^[ ]*-[ ]+id:/) {
+    p = index(line, "id:")
+    field_indent = p - 1
+    entry_indent = indent
+    cmd_indent = -1
+    in_commands = 0
+    cur = mos_scalar(substr(line, p + 3), 1)
+    in_entry = (cur == want_id)
+    if (mode == "ids" && cur != "") print cur
+    next
+  }
+  if (field_indent == 0) next            # nothing seen yet: outside all entries
+  if (indent <= entry_indent) {          # dedented out of the entry list
+    in_entry = 0
+    in_commands = 0
+    next
+  }
+
+  if (indent == field_indent) {          # a scalar field of the current entry
+    c = index(line, ":")
+    if (c == 0) next
+    key = mos_trim(substr(line, 1, c - 1))
+    if (key == "commands") {
+      in_commands = 1
+      cmd_indent = -1
+      next
+    }
+    in_commands = 0
+    if (mode == "field" && in_entry && key == want_field) {
+      print mos_scalar(substr(line, c + 1), 1)
+      found = 1
+      exit 0
+    }
+    next
+  }
+
+  # deeper than the entry fields: only the commands: sub-block is of interest
+  if (mode == "commands" && in_entry && in_commands) {
+    if (cmd_indent < 0) cmd_indent = indent
+    if (indent != cmd_indent) next       # ignore anything nested deeper
+    c = index(line, ":")
+    if (c == 0) next
+    key = mos_trim(substr(line, 1, c - 1))
+    if (key == "") next
+    printf "%s\t%s\n", key, mos_scalar(substr(line, c + 1), 1)
+  }
+}
+END { if (mode == "field") exit (found ? 0 : 1) }
+' "$registry"
+}
+
+# mos_yaml_repo_ids — every top-level entry id, one per line.
+mos_yaml_repo_ids() {
+  mos__yaml_query ids
+}
+
+# mos_yaml_repo_field <id> <field> — scalar field of one entry.
+# Empty output + return 1 when the entry or the field is absent.
+mos_yaml_repo_field() {
+  [ $# -eq 2 ] || mos_die "mos_yaml_repo_field: need <id> <field>"
+  mos__yaml_query field "$1" "$2"
+}
+
+# mos_yaml_repo_commands <id> — the commands: sub-block as "name<TAB>command".
+mos_yaml_repo_commands() {
+  [ $# -eq 1 ] || mos_die "mos_yaml_repo_commands: need <id>"
+  mos__yaml_query commands "$1"
+}
+
+# mos_repo_registered <id> — true when the id exists in the registry.
+mos_repo_registered() {
+  local want="${1:-}" id
+  [ -n "$want" ] || return 1
+  while IFS= read -r id; do
+    if [ "$id" = "$want" ]; then
+      return 0
+    fi
+  done <<EOF
+$(mos_yaml_repo_ids)
+EOF
+  return 1
+}
+
+# --- hosts ------------------------------------------------------------------
+
+# mos__detect_host <id> — echo the host, or return 1 without output.
+# Never dies: callers that only want to probe (mos_check_host_cli) must not be
+# torn down, and `$(fn || true)` cannot rescue a die because `exit` inside a
+# command substitution skips the `|| true` and leaves status 1 for `set -e`.
+mos__detect_host() {
+  local id="${1:-}" host remote
+  [ -n "$id" ] || return 1
+  host=$(mos_yaml_repo_field "$id" host || true)
+  if [ -n "$host" ]; then
+    printf '%s\n' "$host"
+    return 0
+  fi
+  remote=$(mos_yaml_repo_field "$id" remote || true)
+  [ -n "$remote" ] || return 1
+  case "$remote" in
+    *github.*) printf 'github\n' ;;
+    *gitlab.*) printf 'gitlab\n' ;;
+    *) return 1 ;;
+  esac
+}
+
+# mos_repo_host <id> — explicit host: wins, else detected from the remote URL.
+mos_repo_host() {
+  local id="${1:-}" host remote
+  [ -n "$id" ] || mos_die "mos_repo_host: need <id>"
+  if host=$(mos__detect_host "$id"); then
+    printf '%s\n' "$host"
+    return 0
+  fi
+  remote=$(mos_yaml_repo_field "$id" remote || true)
+  [ -n "$remote" ] || mos_die "repo '$id' has no 'remote:' in $(mos_registry_path)"
+  mos_die "cannot detect host for repo '$id' from remote '$remote' — add 'host: github' or 'host: gitlab' to that entry in $(mos_registry_path)"
+}
+
+# mos_host_cli <host> — the CLI that talks to that host.
+mos_host_cli() {
+  case "${1:-}" in
+    github) printf 'gh\n' ;;
+    gitlab) printf 'glab\n' ;;
+    *) mos_die "unknown host '${1:-}' — expected 'github' or 'gitlab'" ;;
+  esac
+}
+
+# mos_check_host_cli <id> — warn-only check that the host CLI is usable.
+mos_check_host_cli() {
+  local id="${1:-}" host cli
+  [ -n "$id" ] || return 0
+  if ! host=$(mos__detect_host "$id"); then
+    mos_warn "repo '$id': cannot tell whether it lives on github or gitlab — skipping the CLI check; add 'host:' to its entry in $(mos_registry_path)"
+    return 0
+  fi
+  # `cli=$(...) || ...` is safe: a die inside the substitution surfaces as a
+  # non-zero status here instead of tearing the calling script down.
+  if ! cli=$(mos_host_cli "$host" 2>/dev/null); then
+    mos_warn "repo '$id': unknown host '$host' — expected 'github' or 'gitlab'"
+    return 0
+  fi
+  if ! command -v "$cli" >/dev/null 2>&1; then
+    mos_warn "repo '$id': '$cli' is not installed — $host operations will not work"
+    return 0
+  fi
+  if ! "$cli" auth status >/dev/null 2>&1; then
+    mos_warn "repo '$id': '$cli' is not authenticated — run '$cli auth login'"
+  fi
+  return 0
+}
+
+# --- markdown frontmatter ---------------------------------------------------
+
+# mos_frontmatter_field <file> <field> — scalar from the first --- ... --- block.
+# Empty output + return 1 when the file has no frontmatter or the field is absent.
+mos_frontmatter_field() {
+  [ $# -eq 2 ] || mos_die "mos_frontmatter_field: need <file> <field>"
+  local file="$1" field="$2"
+  [ -f "$file" ] || return 1
+  awk -v want="$field" \
+    "$(mos__awk_scalar)"'
+NR == 1 {
+  if (mos_trim($0) != "---") exit 1
+  next
+}
+{
+  if (mos_trim($0) == "---") exit (found ? 0 : 1)
+  if (match($0, /^[A-Za-z_][A-Za-z0-9_.-]*:/)) {
+    key = substr($0, 1, RLENGTH - 1)
+    if (key == want) {
+      print mos_scalar(substr($0, RLENGTH + 1), 0)
+      found = 1
+      exit 0
+    }
+  }
+}
+END { exit (found ? 0 : 1) }
+' "$file"
+}
