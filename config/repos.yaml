@@ -1,0 +1,26 @@
+# Repo registry. scripts/sync-repos.sh clones each repo into repos/<id>.
+# Replace the examples below with your own repositories.
+#
+# Fields per entry:
+#   id:             directory name under repos/ (required)
+#   remote:         git clone URL (required)
+#   host:           gitlab | github — OPTIONAL, auto-detected from remote URL;
+#                   set explicitly only for self-hosted instances on custom domains
+#   default_branch: branch worktrees are created from (required)
+#   commands:       quality-gate commands, run from the worktree during the verify phase
+#   notes:          where this repo's knowledge-base section lives
+repos:
+  - id: spring-petclinic
+    remote: https://github.com/spring-projects/spring-petclinic.git
+    default_branch: main
+    commands:
+      test: ./mvnw test
+      build: ./mvnw package
+    notes: knowledge/repos/spring-petclinic/
+
+  - id: gitlab-nodejs-example
+    remote: https://gitlab.com/gitlab-examples/nodejs.git
+    default_branch: master
+    commands:
+      test: npm test
+    notes: knowledge/repos/gitlab-nodejs-example/
