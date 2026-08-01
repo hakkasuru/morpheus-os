@@ -58,7 +58,8 @@ asks for setup help.
 6. **[destructive — confirm]** Suggest a first commit of the personalized
    workspace. Confirm with the human that `origin` points at their own
    fork/copy of this repo (not the upstream template) before any push —
-   this runbook only ever proposes a local commit, never a push.
+   per README "Make it yours" — this runbook only ever proposes a local
+   commit, never a push.
 
    ```
    git add config/ knowledge/

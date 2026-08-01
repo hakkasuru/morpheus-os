@@ -40,9 +40,42 @@ plan, and before anything is pushed or opened as an MR/PR.
 
 ## First-time setup
 
+### Make it yours
+
+This repo is a **template** — don't work inside a clone that still points
+at the public repo. Fork it (GitHub's **"Use this template"** button) or
+make your own copy, and set it **private** if your repo registry or
+knowledge base shouldn't be public:
+
+```
+git clone <public-template-url> my-workspace
+cd my-workspace
+git remote set-url origin <your-private-repo-url>
+git push -u origin main
+```
+
+Optional: keep the public template as an update channel via a second
+remote:
+
+```
+git remote add upstream <public-template-url>
+git pull upstream main
+```
+
+This stays low-conflict because personal layers (`config/`, `work/`,
+`knowledge/`) rarely touch harness machinery (`scripts/`, `workflow/`,
+`templates/`, `AGENTS.md`).
+
+Committing your workspace is optional and always yours to trigger —
+nothing in the harness auto-commits or auto-pushes it; skipping just
+costs you git's history/backup/machine-migration benefits. Your
+registered code repos are unaffected either way — `repos/` and
+`worktrees/` are gitignored, and their changes ship via branches + MRs to
+their own remotes.
+
 ### Recommended: agent-guided setup
 
-1. Clone this repo.
+1. Clone your copy (see "Make it yours" above).
 2. Open your coding agent in the repo root.
 3. Say **"set up my workspace"**.
 
@@ -80,8 +113,6 @@ agent has not onboarded them, so nothing has been seeded under
 - Server-side GitHub Copilot features may not follow symlinks; if Copilot
   doesn't pick up `AGENTS.md` via the symlink, point it at the file
   directly.
-- If your repo registry lists private repos, keep your copy of this repo
-  private too — `config/repos.yaml` and `knowledge/` will reference them.
 
 ## How to use it
 
