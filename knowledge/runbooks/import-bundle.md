@@ -9,6 +9,7 @@ stale_after: null # YYYY-MM-DD — re-verify after this date
 tags: [knowledge-base, bundle, sharing, import]
 repo: null
 generated_by: null # agent name when agent-authored
+verified: null # YYYY-MM-DD — set when a human reviews an agent-authored doc
 ---
 
 # Import bundle

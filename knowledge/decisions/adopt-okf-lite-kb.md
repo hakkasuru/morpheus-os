@@ -9,6 +9,7 @@ stale_after: null # YYYY-MM-DD — re-verify after this date
 tags: [knowledge-base, format, okf-lite]
 repo: null
 generated_by: null # agent name when agent-authored
+verified: null # YYYY-MM-DD — set when a human reviews an agent-authored doc
 ---
 
 # Adopt OKF-lite for the knowledge base
@@ -44,9 +45,11 @@ weight without benefit.
 
 ## Consequences
 
-- Every KB doc (except `index.md`) carries the standard frontmatter
-  fields: `type`, `title`, `description`, `status`, `created`, `updated`,
-  `stale_after`, `tags`, `repo`, `generated_by`.
+- Every KB doc (except the reserved filenames `index.md` and `log.md`)
+  carries the standard frontmatter fields: `type`, `title`, `description`,
+  `status`, `created`, `updated`, `stale_after`, `tags`, `repo`,
+  `generated_by`, and optional `verified` (YYYY-MM-DD, set when a human
+  reviews an agent-authored doc).
 - Every KB directory's `index.md` must be kept current whenever a doc is
   added, removed, or renamed.
 - `scripts/validate.sh` enforces the type set, frontmatter presence,
@@ -81,5 +84,16 @@ amendment here records *why* those moved, it does not itself change them.
 - One piece of OKF's trust machinery graduated from "omitted" to adopted,
   because sharing makes it meaningful: an optional `verified: YYYY-MM-DD`
   field, added when a human reviews an agent-authored doc, so bundle
-  consumers can tell reviewed knowledge from raw agent output. The rest of
-  the provenance/attestation machinery remains deliberately omitted.
+  consumers can tell reviewed knowledge from raw agent output. It is in
+  every knowledge template and `validate.sh` warns when a set value is not
+  a date. The rest of the provenance/attestation machinery remains
+  deliberately omitted.
+- Upstream features considered and NOT adopted, for the record:
+  - `resource:` (a URI identifying the underlying asset) — redundant here:
+    repo-scoped docs carry `repo: <id>`, and `config/repos.yaml` already
+    maps that id to the remote URL. One level of indirection, one source
+    of truth.
+  - `log.md` (reserved filename for chronological history) — git history
+    covers it for a single-operator KB. The filename stays reserved:
+    `validate.sh` exempts it alongside `index.md`, so adopting it later is
+    additive.

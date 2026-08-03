@@ -9,6 +9,7 @@ stale_after: 2027-02-04 # YYYY-MM-DD — re-verify after this date
 tags: [knowledge-base, okf, spec]
 repo: null
 generated_by: null # agent name when agent-authored
+verified: null # YYYY-MM-DD — set when a human reviews an agent-authored doc
 ---
 
 # OKF spec

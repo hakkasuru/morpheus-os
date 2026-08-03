@@ -341,7 +341,9 @@ NR == 1 {
   if (match($0, /^[A-Za-z_][A-Za-z0-9_.-]*:/)) {
     key = substr($0, 1, RLENGTH - 1)
     if (key == want) {
-      print mos_scalar(substr($0, RLENGTH + 1), 0)
+      # strip_comment=1: template frontmatter carries inline "# ..." hints
+      # (e.g. stale_after: null # YYYY-MM-DD — ...), same as the registry.
+      print mos_scalar(substr($0, RLENGTH + 1), 1)
       found = 1
       exit 0
     }

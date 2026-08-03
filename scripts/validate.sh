@@ -242,6 +242,15 @@ validate_kb_doc() {
       is_iso_date "$created" && [[ "$created" < "$cutoff30" ]]; then
       v_warn "$where: still status draft, created $created (more than 30 days ago) — finish it or mark it stable"
     fi
+
+    # verified: optional human-review stamp. When set, it must be a date —
+    # a malformed value would silently defeat the reviewed-vs-raw signal
+    # that shared bundles rely on.
+    verified=$(field "$file" verified)
+    check
+    if [ -n "$verified" ] && [ "$verified" != "null" ] && ! is_iso_date "$verified"; then
+      v_warn "$where: verified '$verified' is not a YYYY-MM-DD date — use the date the human reviewed it, or null"
+    fi
   else
     v_error "$where: no YAML frontmatter — knowledge docs need '---', a 'type:' field and a closing '---'"
   fi
@@ -292,10 +301,12 @@ if [ -d "$root/knowledge" ]; then
 
   # knowledge/bundles/ holds vendored external bundles — read-only reference
   # material that may not follow this workspace's type vocabulary. Skip it.
+  # index.md and log.md are OKF reserved filenames — listings and history,
+  # not concept docs; neither carries concept frontmatter.
   while IFS= read -r kb_doc; do
     [ -n "$kb_doc" ] || continue
     validate_kb_doc "$kb_doc"
-  done < <(find "$root/knowledge" -type d -path "$root/knowledge/bundles" -prune -o -type f -name '*.md' ! -name 'index.md' -print | LC_ALL=C sort)
+  done < <(find "$root/knowledge" -type d -path "$root/knowledge/bundles" -prune -o -type f -name '*.md' ! -name 'index.md' ! -name 'log.md' -print | LC_ALL=C sort)
 fi
 
 if [ "$errors" -gt 0 ]; then
