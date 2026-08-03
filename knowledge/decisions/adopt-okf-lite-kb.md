@@ -4,7 +4,7 @@ title: "Adopt OKF-lite for the knowledge base"
 description: "Use a lightweight, OKF-inspired markdown+frontmatter convention for all knowledge-base docs."
 status: stable
 created: 2026-08-01
-updated: 2026-08-01
+updated: 2026-08-04
 stale_after: null # YYYY-MM-DD — re-verify after this date
 tags: [knowledge-base, format, okf-lite]
 repo: null
@@ -58,3 +58,28 @@ weight without benefit.
 Yes — this is plain markdown with no external dependency. Migrating to a
 different convention is a frontmatter rewrite across `knowledge/**/*.md`,
 not a data migration.
+
+## Amendments
+
+Dated changes to this decision. New knowledge docs always take their shape
+from `templates/knowledge/` and are enforced by `scripts/validate.sh` — an
+amendment here records *why* those moved, it does not itself change them.
+
+### 2026-08-04 — versioning, sharing, and the verified field
+
+- The KB is now explicitly stamped: `okf_version: "0.2"` in
+  `/knowledge/index.md`, mirrored by `SUPPORTED_OKF_VERSION` in
+  `scripts/validate.sh`, which warns on drift between the two. Adopting a
+  newer OKF version is a defined procedure — the
+  [KB migrate runbook](/knowledge/runbooks/kb-migrate.md) — that amends
+  this record as one of its steps.
+- Knowledge now moves across trust boundaries: external bundles vendor in
+  read-only under `knowledge/bundles/`
+  ([import-bundle](/knowledge/runbooks/import-bundle.md)), and subtrees
+  export as standalone conformant bundles
+  ([share-bundle](/knowledge/runbooks/share-bundle.md)).
+- One piece of OKF's trust machinery graduated from "omitted" to adopted,
+  because sharing makes it meaningful: an optional `verified: YYYY-MM-DD`
+  field, added when a human reviews an agent-authored doc, so bundle
+  consumers can tell reviewed knowledge from raw agent output. The rest of
+  the provenance/attestation machinery remains deliberately omitted.
