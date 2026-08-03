@@ -16,7 +16,9 @@ Check the workspace for structural mistakes:
   work/**/{task,epic}.md   frontmatter present and complete, id matches its
                            folder, status is legal, folder and status agree,
                            phase docs exist only when the status allows them
-  knowledge/**/*.md        frontmatter present with a legal type:
+  knowledge/**/*.md        frontmatter present with a legal type: and
+                           status:, no unsubstituted {{DATE}} placeholders,
+                           verified: is a date when set
 
 Errors print to stderr and exit 1. Warnings print to stderr and exit 0.
 Missing or empty work/ and knowledge/ trees are fine.
@@ -46,6 +48,8 @@ esac
 STATUSES="intake context planning plan-review impl-planning impl-review executing verifying delivering done blocked cancelled"
 WORK_TYPES="task story epic"
 KB_TYPES="Note Decision Runbook Reference"
+# The three legal knowledge-doc statuses — see knowledge/decisions/adopt-okf-lite-kb.md.
+KB_STATUSES="draft stable deprecated"
 WORK_FIELDS="id type title status created updated"
 
 errors=0
@@ -214,10 +218,20 @@ validate_work_doc() {
 }
 
 validate_kb_doc() {
-  local file="$1" dir base where ktype status created stale
+  local file="$1" dir base where ktype status created stale verified
   dir=$(dirname "$file")
   base=$(basename "$file")
   where=$(rel "$file")
+
+  # An unsubstituted {{DATE}} means a template was copied without filling it
+  # in. Worth its own check because it otherwise fails silently: "created:
+  # {{DATE}}" is not an ISO date, so the draft-age check below skips rather
+  # than firing. Only new-work.sh substitutes placeholders, and only for
+  # templates/work/ — knowledge docs are copied by hand.
+  check
+  if grep -qF '{{DATE}}' "$file"; then
+    v_error "$where: unsubstituted {{DATE}} placeholder — replace it with the real date (date -u +%Y-%m-%d)"
+  fi
 
   check
   if has_frontmatter "$file"; then
@@ -237,6 +251,16 @@ validate_kb_doc() {
 
     status=$(field "$file" status)
     created=$(field "$file" created)
+    # Validate the status vocabulary. Without this, a typo ("stabel", "Draft")
+    # passes silently AND disables the draft-age warning below, which tests
+    # status = "draft" exactly — so the one mechanism that stops drafts
+    # accumulating fails closed on a misspelling.
+    check
+    if [ -z "$status" ]; then
+      v_error "$where: frontmatter field 'status' is missing or empty — expected one of: $KB_STATUSES"
+    elif ! in_set "$status" "$KB_STATUSES"; then
+      v_error "$where: status '$status' is not one of: $KB_STATUSES"
+    fi
     check
     if [ "$status" = "draft" ] && [ -n "$cutoff30" ] &&
       is_iso_date "$created" && [[ "$created" < "$cutoff30" ]]; then
