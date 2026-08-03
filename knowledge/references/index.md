@@ -1,3 +1,3 @@
 # References
 
-*No references yet — entries appear here as knowledge accrues.*
+* [OKF spec](/knowledge/references/okf-spec.md) - where the upstream Open Knowledge Format spec lives, and which version this KB tracks.

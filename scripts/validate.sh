@@ -274,6 +274,22 @@ if [ -d "$root/work" ]; then
 fi
 
 if [ -d "$root/knowledge" ]; then
+  # The knowledge format this harness's templates and checks support. Bumped
+  # by the kb-migrate runbook together with the checks themselves, so a
+  # mismatch against the knowledge base's own stamp means "the harness moved
+  # ahead of your docs" — typically right after pulling template updates from
+  # upstream.
+  SUPPORTED_OKF_VERSION="0.2"
+  check
+  if [ -f "$root/knowledge/index.md" ]; then
+    kb_version=$(mos_frontmatter_field "$root/knowledge/index.md" okf_version || true)
+    if [ -z "$kb_version" ]; then
+      v_warn "knowledge/index.md: no okf_version stamp — add 'okf_version: \"$SUPPORTED_OKF_VERSION\"' frontmatter so format drift is detectable"
+    elif [ "$kb_version" != "$SUPPORTED_OKF_VERSION" ]; then
+      v_warn "knowledge/index.md: knowledge base is stamped okf_version \"$kb_version\" but this harness supports \"$SUPPORTED_OKF_VERSION\" — run the kb-migrate runbook (knowledge/runbooks/kb-migrate.md)"
+    fi
+  fi
+
   # knowledge/bundles/ holds vendored external bundles — read-only reference
   # material that may not follow this workspace's type vocabulary. Skip it.
   while IFS= read -r kb_doc; do

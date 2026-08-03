@@ -66,6 +66,12 @@ This stays low-conflict because personal layers (`config/`, `work/`,
 `knowledge/`) rarely touch harness machinery (`scripts/`, `workflow/`,
 `templates/`, `AGENTS.md`).
 
+After any upstream pull, run `scripts/validate.sh`: the harness declares
+which knowledge-format version it supports, and the validator compares it
+against your knowledge base's `okf_version` stamp — if the update moved
+the format ahead of your docs, it says so and points you at the
+`kb-migrate` runbook to bring them up to date.
+
 Committing your workspace is optional and always yours to trigger —
 nothing in the harness auto-commits or auto-pushes it; skipping just
 costs you git's history/backup/machine-migration benefits. Your
