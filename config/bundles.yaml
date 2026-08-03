@@ -1,0 +1,19 @@
+# Knowledge-bundle registry. scripts/sync-bundles.sh clones each bundle into
+# knowledge/bundles/<name>/ — vendored, READ-ONLY reference knowledge that your
+# agent can navigate like native docs. The directory is gitignored: your
+# commits never carry other people's content, and a fresh machine just re-syncs.
+#
+# A bundle is any git repo of OKF-style markdown concepts (frontmatter + an
+# index.md per directory). See knowledge/runbooks/import-bundle.md.
+#
+# Fields per entry:
+#   name:   directory name under knowledge/bundles/ (required; must be the
+#           entry's first key: write "- name: <value>")
+#   remote: git clone URL (required)
+#   ref:    branch or tag to track (optional; default: the remote's default branch)
+#
+# Example:
+#   - name: teammate-service-notes
+#     remote: git@github.com:example/service-notes.git
+#     ref: main
+bundles: []

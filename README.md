@@ -165,6 +165,20 @@ section for future reference.
 orphaned worktrees, and keep `config/preferences.md` current as your
 conventions change.
 
+**Sharing knowledge bundles:** the knowledge base speaks
+[OKF](https://github.com/GoogleCloudPlatform/knowledge-catalog) — a
+knowledge bundle is just a directory of markdown concepts, so knowledge
+moves in both directions:
+
+- *Import:* "import bundle `<url>`" registers an external bundle in
+  `config/bundles.yaml` and vendors it read-only under
+  `knowledge/bundles/<name>/` (gitignored; `scripts/sync-bundles.sh`
+  re-syncs it). Your agent navigates it like native knowledge.
+- *Export:* "share my `<repo-id>` notes" runs the `share-bundle` runbook —
+  it copies the subtree to a standalone repo, rebases links, stamps
+  `okf_version`, checks conformance and sweeps for private material before
+  you push it anywhere.
+
 **Evolving the harness** — customize from the most specific layer down:
 
 | Layer | Governs |

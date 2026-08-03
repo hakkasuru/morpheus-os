@@ -117,14 +117,22 @@ mos_registry_path() {
   printf '%s/config/repos.yaml\n' "$(mos_root)"
 }
 
-# mos__yaml_query <ids|field|commands> [id] [field] [warn]
-# warn=1 reports list items this parser has to skip; only mos_yaml_repo_ids asks
-# for it, so a single command prints such a warning once rather than per query.
+# mos_bundles_path — absolute path of config/bundles.yaml.
+mos_bundles_path() {
+  printf '%s/config/bundles.yaml\n' "$(mos_root)"
+}
+
+# mos__yaml_query <ids|field|commands> [id] [field] [warn] [file] [entry-key]
+# warn=1 reports list items this parser has to skip; only the registry-wide
+# reads ask for it, so a single command prints such a warning once rather than
+# per query. file/entry-key default to the repo registry keyed by "id" — the
+# bundle helpers pass config/bundles.yaml keyed by "name".
 mos__yaml_query() {
-  local mode="$1" want_id="${2:-}" want_field="${3:-}" warn="${4:-0}" registry
-  registry=$(mos_registry_path)
+  local mode="$1" want_id="${2:-}" want_field="${3:-}" warn="${4:-0}" registry ekey
+  registry="${5:-$(mos_registry_path)}"
+  ekey="${6:-id}"
   [ -f "$registry" ] || mos_die "registry not found: $registry"
-  awk -v mode="$mode" -v want_id="$want_id" -v want_field="$want_field" -v warn="$warn" \
+  awk -v mode="$mode" -v want_id="$want_id" -v want_field="$want_field" -v warn="$warn" -v ekey="$ekey" \
     "$(mos__awk_scalar)"'
 {
   line = $0
@@ -133,25 +141,25 @@ mos__yaml_query() {
   indent = match(line, /[^ ]/) - 1
 
   if (line ~ /^[ ]*-([ ]|$)/) {          # a sequence item
-    # entry start: "  - id: <value>"
-    if (line ~ /^[ ]*-[ ]+id:/) {
-      p = index(line, "id:")
+    # entry start: "  - <entry-key>: <value>"
+    if (line ~ ("^[ ]*-[ ]+" ekey ":")) {
+      p = index(line, ekey ":")
       field_indent = p - 1
       entry_indent = indent
       cmd_indent = -1
       in_commands = 0
-      cur = mos_scalar(substr(line, p + 3), 1)
+      cur = mos_scalar(substr(line, p + length(ekey) + 1), 1)
       in_entry = (cur == want_id)
       if (mode == "ids" && cur != "") print cur
       next
     }
-    # A registry entry is recognised by "id:" being its first key. Anything else
-    # is skipped — say so instead of dropping the entry silently.
+    # A registry entry is recognised by the entry key being its first key.
+    # Anything else is skipped — say so instead of dropping the entry silently.
     if (entry_indent == "" || indent == entry_indent) {
       in_entry = 0
       in_commands = 0
       if (warn == 1) {
-        printf "warning: %s:%d: sequence item has no \"id:\" as its first key — this entry is ignored; write it as \"- id: <name>\"\n", FILENAME, FNR > "/dev/stderr"
+        printf "warning: %s:%d: sequence item has no \"%s:\" as its first key — this entry is ignored; write it as \"- %s: <value>\"\n", FILENAME, FNR, ekey, ekey > "/dev/stderr"
       }
       next
     }
@@ -214,6 +222,19 @@ mos_yaml_repo_field() {
 mos_yaml_repo_commands() {
   [ $# -eq 1 ] || mos_die "mos_yaml_repo_commands: need <id>"
   mos__yaml_query commands "$1"
+}
+
+# mos_yaml_bundle_names — every bundle name from config/bundles.yaml, one per
+# line. Registry-wide read, so it carries the skipped-entry warning.
+mos_yaml_bundle_names() {
+  mos__yaml_query ids "" "" 1 "$(mos_bundles_path)" name
+}
+
+# mos_yaml_bundle_field <name> <field> — scalar field of one bundle entry.
+# Empty output + return 1 when the entry or the field is absent.
+mos_yaml_bundle_field() {
+  [ $# -eq 2 ] || mos_die "mos_yaml_bundle_field: need <name> <field>"
+  mos__yaml_query field "$1" "$2" 0 "$(mos_bundles_path)" name
 }
 
 # mos_repo_registered <id> — true when the id exists in the registry.

@@ -92,6 +92,13 @@ any relevant docs it points to.
 - Set `generated_by: <agent-name>` on every agent-authored doc.
 - Never invent a knowledge doc's frontmatter fields ad hoc — copy the
   shape from `templates/knowledge/` and fill it in.
+- `knowledge/bundles/` holds vendored external bundles (registered in
+  `config/bundles.yaml`, synced by `scripts/sync-bundles.sh`). Read them
+  freely; NEVER edit them — corrections about imported knowledge go in
+  your own `knowledge/notes/` docs linking to the bundle doc concerned.
+- When the human reviews an agent-authored doc, record it: add
+  `verified: YYYY-MM-DD` to its frontmatter. Consumers of shared bundles
+  use it to tell reviewed knowledge from raw agent output.
 
 ## 6. Runbooks & ops
 

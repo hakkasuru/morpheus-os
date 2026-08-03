@@ -274,10 +274,12 @@ if [ -d "$root/work" ]; then
 fi
 
 if [ -d "$root/knowledge" ]; then
+  # knowledge/bundles/ holds vendored external bundles — read-only reference
+  # material that may not follow this workspace's type vocabulary. Skip it.
   while IFS= read -r kb_doc; do
     [ -n "$kb_doc" ] || continue
     validate_kb_doc "$kb_doc"
-  done < <(find "$root/knowledge" -type f -name '*.md' ! -name 'index.md' | LC_ALL=C sort)
+  done < <(find "$root/knowledge" -type d -path "$root/knowledge/bundles" -prune -o -type f -name '*.md' ! -name 'index.md' -print | LC_ALL=C sort)
 fi
 
 if [ "$errors" -gt 0 ]; then

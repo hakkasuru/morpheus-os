@@ -2,6 +2,8 @@ repos/*
 !repos/.gitkeep
 worktrees/*
 !worktrees/.gitkeep
+knowledge/bundles/*
+!knowledge/bundles/.gitkeep
 
 .superpowers/
 .env
