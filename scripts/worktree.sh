@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # worktree.sh — manage per-work-item git worktrees under worktrees/.
-# Naming: worktrees/<repo-id>--<work-id> on branch work/<work-id>.
+# Naming: worktrees/<repo-id>--<work-id>. The branch defaults to
+# <branch_prefix><work-id> (prefix from the repo's registry entry, "work/"
+# when unset); --branch overrides it entirely for org naming schemes.
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd -P)
@@ -10,17 +12,23 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd -P)
 
 usage() {
   cat <<'EOF'
-Usage: worktree.sh add    <repo-id> <work-id>
+Usage: worktree.sh add    <repo-id> <work-id> [--branch <name>]
        worktree.sh remove <repo-id> <work-id> [--delete-branch]
        worktree.sh list
 
-add     create worktrees/<repo-id>--<work-id> on a new branch work/<work-id>,
-        branched from origin/<default_branch> of the registered repo.
-remove  remove that worktree (and, with --delete-branch, its branch).
+add     create worktrees/<repo-id>--<work-id> on a new branch, branched from
+        origin/<default_branch> of the registered repo. The branch is named
+        <branch_prefix><work-id> — prefix from the repo's 'branch_prefix:'
+        registry field, "work/" when unset — unless --branch names it
+        outright.
+remove  remove that worktree (and, with --delete-branch, the branch it has
+        checked out).
 list    print "<repo-id>  <work-id>  <path>" for every existing worktree.
 
 Options:
-  --delete-branch   remove only: also delete the work/<work-id> branch
+  --branch <name>   add only: exact branch name to create (overrides the
+                    registry prefix; for org-enforced naming schemes)
+  --delete-branch   remove only: also delete the worktree's branch
   -h, --help        show this help
 
 Neither repo ids nor work ids may contain "--" (the folder-name separator).
@@ -55,7 +63,7 @@ repo_dir() {
 }
 
 cmd_add() {
-  local repo_id="$1" work_id="$2" dir branch_base worktree branch
+  local repo_id="$1" work_id="$2" branch="$3" dir branch_base worktree prefix
   check_id "repo-id" "$repo_id"
   check_id "work-id" "$work_id"
   dir=$(repo_dir "$repo_id")
@@ -66,7 +74,13 @@ cmd_add() {
 
   worktree="$(mos_root)/worktrees/${repo_id}--${work_id}"
   [ ! -e "$worktree" ] || mos_die "$worktree already exists — remove it first: scripts/worktree.sh remove $repo_id $work_id"
-  branch="work/$work_id"
+
+  if [ -z "$branch" ]; then
+    prefix=$(mos_repo_branch_prefix "$repo_id")
+    branch="${prefix}${work_id}"
+  fi
+  git check-ref-format "refs/heads/$branch" ||
+    mos_die "'$branch' is not a valid git branch name"
 
   git -C "$dir" fetch --prune ||
     mos_die "fetch failed for '$repo_id' — check the remote and your network"
@@ -85,8 +99,15 @@ cmd_remove() {
   dir=$(repo_dir "$repo_id")
 
   worktree="$(mos_root)/worktrees/${repo_id}--${work_id}"
-  branch="work/$work_id"
   [ -d "$worktree" ] || mos_die "no worktree at $worktree"
+
+  # The branch name is configurable (branch_prefix / --branch at add time),
+  # so ask the worktree what it actually has checked out — before removing it.
+  branch=""
+  if [ "$delete_branch" = "yes" ]; then
+    branch=$(git -C "$worktree" symbolic-ref --short HEAD 2>/dev/null) ||
+      mos_die "cannot determine the branch of $worktree (detached HEAD?) — remove without --delete-branch, then delete the branch yourself"
+  fi
 
   git -C "$dir" worktree remove "$worktree" ||
     mos_die "git refused to remove $worktree — --force not supported; commit or clean the worktree first"
@@ -121,8 +142,36 @@ case "$subcommand" in
     exit 0
     ;;
   add)
-    [ $# -eq 2 ] || usage_error "add takes <repo-id> <work-id>"
-    cmd_add "$1" "$2"
+    add_branch=""
+    add_repo_id=""
+    add_work_id=""
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --branch)
+          [ $# -ge 2 ] || usage_error "--branch requires a name"
+          add_branch="$2"
+          shift
+          ;;
+        --branch=*)
+          add_branch="${1#--branch=}"
+          [ -n "$add_branch" ] || usage_error "--branch requires a name"
+          ;;
+        -*) usage_error "unknown option: $1" ;;
+        *)
+          if [ -z "$add_repo_id" ]; then
+            add_repo_id="$1"
+          elif [ -z "$add_work_id" ]; then
+            add_work_id="$1"
+          else
+            usage_error "unexpected argument: $1"
+          fi
+          ;;
+      esac
+      shift
+    done
+    [ -n "$add_repo_id" ] || usage_error "add takes <repo-id> <work-id> [--branch <name>]"
+    [ -n "$add_work_id" ] || usage_error "add takes <repo-id> <work-id> [--branch <name>]"
+    cmd_add "$add_repo_id" "$add_work_id" "$add_branch"
     ;;
   remove)
     delete_branch="no"

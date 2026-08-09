@@ -14,7 +14,9 @@ Verification is complete and everything is green. Status is `delivering`.
    the human. Wait for explicit approval — per
    `workflow/WORKFLOW.md` § Human gates.
 3. On approval, per affected repo:
-   - Push the branch from its worktree: `git push -u origin work/<work-id>`.
+   - Push the branch from its worktree: `git push -u origin <branch>` (the
+     branch named in the implementation plan's `## Delivery` section — ask
+     the worktree if unsure: `git symbolic-ref --short HEAD`).
    - Create the MR: GitLab host → `glab mr create` (source branch, target
      `default_branch`, title, description); GitHub host → `gh pr create`.
    - Record the MR URL in `task.md` `mr:`, and append the gate-3 approval

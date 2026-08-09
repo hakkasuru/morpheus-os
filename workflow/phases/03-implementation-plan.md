@@ -15,7 +15,9 @@ The plan is approved. Status is `impl-planning`.
    verify command + expected result.
 4. `## Quality Gates` — the exact commands per affected repo, copied
    verbatim from that repo's `commands:` block in `config/repos.yaml`.
-5. `## Delivery` — branch name per repo (`work/<work-id>`), MR title(s),
+5. `## Delivery` — branch name per repo (default `<branch_prefix><work-id>`,
+   prefix from the repo's registry entry or `work/`; apply the branch-naming
+   scheme from `config/preferences.md` if one is set), MR title(s),
    target branch per repo (its `default_branch:` from `config/repos.yaml`).
 6. GATE: set `03-implementation-plan.md` `status: in-review`, work item
    `status: impl-review`, present to the human per

@@ -31,6 +31,6 @@ updated: {{DATE}}
 
 ## Delivery
 
-- Branch: `work/{{ID}}`
+- Branch: `work/{{ID}}` <!-- default <branch_prefix>{{ID}}; follow the repo's branch_prefix / preferences branch-naming scheme -->
 - MR title(s): <title>
 - Target branch(es): <default_branch per repo>

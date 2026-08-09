@@ -4,8 +4,12 @@
 
 ## Git & Delivery
 
-<!-- Branch prefix (default `work/` when unset)
-- Branch prefix: `work/`
+<!-- Branch naming (default prefix `work/` when nothing is set anywhere)
+- Default branch prefix: `work/`
+  (the machine-enforced setting is per repo: `branch_prefix:` in
+  config/repos.yaml — record your default here, set it there; for fully
+  custom schemes the agent passes `--branch <name>` to scripts/worktree.sh)
+- Branch naming scheme: <e.g. feature/<ticket>-<slug> — applied via --branch>
 
 Commit message style
 - Style: conventional commits (type: scope: description)

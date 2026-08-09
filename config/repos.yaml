@@ -8,6 +8,10 @@
 #   host:           gitlab | github — OPTIONAL, auto-detected from remote URL;
 #                   set explicitly only for self-hosted instances on custom domains
 #   default_branch: branch worktrees are created from (required)
+#   branch_prefix:  prefix for task branches, taken verbatim — include your
+#                   separator (e.g. "feature/" or "dev-"). OPTIONAL, default
+#                   "work/". Use it when the host enforces branch naming;
+#                   fully custom schemes: worktree.sh add --branch <name>.
 #   commands:       quality-gate commands, run from the worktree during the verify phase
 #   notes:          where this repo's knowledge-base section lives
 repos:
@@ -25,3 +29,4 @@ repos:
     commands:
       test: npm test
     notes: knowledge/repos/gitlab-nodejs-example/
+

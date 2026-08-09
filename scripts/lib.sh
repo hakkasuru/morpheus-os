@@ -224,6 +224,24 @@ mos_yaml_repo_commands() {
   mos__yaml_query commands "$1"
 }
 
+# mos_repo_branch_prefix <id> — the branch prefix task branches use in this
+# repo: the entry's optional 'branch_prefix:' (taken verbatim — include your
+# separator, e.g. "feature/" or "dev-"), or "work/" when unset. Lets repos
+# follow org-enforced branch naming without touching the scripts.
+mos_repo_branch_prefix() {
+  [ $# -eq 1 ] || mos_die "mos_repo_branch_prefix: need <id>"
+  local prefix
+  prefix=$(mos_yaml_repo_field "$1" branch_prefix || true)
+  if [ -z "$prefix" ]; then
+    printf 'work/\n'
+    return 0
+  fi
+  case "$prefix" in
+    *[\ \	]* | -*) mos_die "repo '$1': branch_prefix '$prefix' is not a valid branch prefix (no whitespace, no leading '-')" ;;
+  esac
+  printf '%s\n' "$prefix"
+}
+
 # mos_yaml_bundle_names — every bundle name from config/bundles.yaml, one per
 # line. Registry-wide read, so it carries the skipped-entry warning.
 mos_yaml_bundle_names() {
