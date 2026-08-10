@@ -27,16 +27,18 @@ reads `AGENTS.md`.
 ```mermaid
 flowchart LR
     intake --> context --> planning
-    planning --> plan_review{{"PLAN REVIEW (human)"}}
+    planning --> plan_review{{"PLAN REVIEW (human or auto)"}}
     plan_review --> impl_planning["impl-planning"]
-    impl_planning --> impl_review{{"IMPL REVIEW (human)"}}
+    impl_planning --> impl_review{{"IMPL REVIEW (human or auto)"}}
     impl_review --> executing --> verifying
-    verifying --> delivery_confirm{{"DELIVERY CONFIRM (human)"}}
+    verifying --> delivery_confirm{{"DELIVERY CONFIRM (human, always)"}}
     delivery_confirm --> done
 ```
 
-There are three human gates: after the plan, after the implementation
-plan, and before anything is pushed or opened as an MR/PR.
+There are three review gates: after the plan, after the implementation
+plan, and before anything is pushed or opened as an MR/PR. A plan-review
+subagent audits the first two and can auto-approve high-confidence plans
+when you opt in (see How to use it); the delivery gate is always yours.
 
 ## First-time setup
 
@@ -134,13 +136,22 @@ scripts/new-work.sh task|story|epic "<title>"
 | intake | Work item is scaffolded and framed. | — |
 | context | Agent reads the relevant repo(s) and knowledge base. | — |
 | planning | Agent drafts a plan. | — |
-| plan-review | — | **Approve or revise the plan.** |
+| plan-review | A plan-review subagent audits the plan (assumptions, doubts, missing context) and scores its confidence. | **Approve or revise the plan** — or nothing, if you've enabled auto-approval and the score clears your threshold. |
 | impl-planning | Agent breaks the plan into an implementation plan. | — |
-| impl-review | — | **Approve or revise the implementation plan.** |
+| impl-review | Same subagent review as plan-review, against the implementation plan. | **Approve or revise the implementation plan** — same optional auto-approval. |
 | executing | Agent delegates implementation to subagents in worktrees. | — |
 | verifying | Agent runs verification commands. | — |
-| delivering | — | **Confirm before push / MR / PR.** |
+| delivering | — | **Confirm before push / MR / PR — always; delivery never auto-approves.** |
 | done | Work item is closed out and learnings are harvested to the KB. | — |
+
+Review gates 1–2 can approve automatically: set an auto-approve threshold in
+`config/preferences.md` (off by default) and plans whose review confidence
+clears it proceed without waiting for you. Hard caps always override —
+plans with open questions for you, destructive steps, or security-touching
+scope come to you regardless of score (see `workflow/plan-reviewer.md`).
+Every auto-approval is recorded in the doc (`approved_by:`) and the task's
+Activity log, and you can veto one after the fact by setting the doc to
+`changes-requested`.
 
 Other things you can do:
 

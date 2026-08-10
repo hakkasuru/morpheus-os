@@ -3,6 +3,7 @@ task: {{ID}}
 phase: implementation-plan
 status: draft # draft | in-review | approved | changes-requested
 approved_at: null
+approved_by: null # human | plan-reviewer (confidence <score>)
 updated: {{DATE}}
 ---
 

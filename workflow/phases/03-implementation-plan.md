@@ -19,15 +19,20 @@ The plan is approved. Status is `impl-planning`.
    prefix from the repo's registry entry or `work/`; apply the branch-naming
    scheme from `config/preferences.md` if one is set), MR title(s),
    target branch per repo (its `default_branch:` from `config/repos.yaml`).
-6. GATE: set `03-implementation-plan.md` `status: in-review`, work item
-   `status: impl-review`, present to the human per
-   `workflow/WORKFLOW.md` § Human gates. STOP and wait.
+6. GATE: set the work item's `status: impl-review`, then dispatch a
+   plan-review subagent per `workflow/plan-reviewer.md` and run the gate
+   procedure in `workflow/WORKFLOW.md` § Review gates — auto-approve on a
+   qualifying confidence score (opt-in, no hard cap fired), otherwise set
+   `03-implementation-plan.md` `status: in-review`, present to the human,
+   STOP and wait.
 
 ## Exit
 
-Human approves → `03-implementation-plan.md` `status: approved` +
-`approved_at:`, work item `status: executing`. Changes requested →
-`status: changes-requested`, revise, re-present.
+Approved (human, or auto per the gate procedure) →
+`03-implementation-plan.md` `status: approved` + `approved_at:` +
+`approved_by:`, work item `status: executing`. Changes requested →
+`status: changes-requested`, revise, re-present (the reviewer runs again on
+the revision).
 
 ## Hard rules
 

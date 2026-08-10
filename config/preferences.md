@@ -31,7 +31,15 @@ Squash vs merge preference
 
 ## Working Style
 
-<!-- Plan verbosity
+<!-- Plan auto-approval (gates 1-2 only; delivery always needs the human)
+- Auto-approve threshold: 85
+  (0-100 confidence from the plan-review subagent — see
+  workflow/plan-reviewer.md. Plans scoring at or above the threshold are
+  approved without waiting for you, UNLESS a hard cap fired: open questions
+  to you, destructive steps, or security-touching scope always come to you.
+  Leave commented out to review every plan yourself.)
+
+Plan verbosity
 - Verbosity: detailed plans with rationale
 
 Max clarifying questions before proceeding

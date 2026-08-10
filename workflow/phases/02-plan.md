@@ -17,15 +17,19 @@ Status is `planning` (context complete).
    - `## Acceptance Criteria` — final, testable versions. Copy these back
      into `task.md` `## Acceptance Criteria`, replacing the draft criteria
      from intake.
-3. GATE: set `02-plan.md` `status: in-review`, set the work item's
-   `status: plan-review`, present a concise summary plus the doc path to
-   the human per `workflow/WORKFLOW.md` § Human gates. STOP and wait.
+3. GATE: set the work item's `status: plan-review`, then dispatch a
+   plan-review subagent per `workflow/plan-reviewer.md` and run the gate
+   procedure in `workflow/WORKFLOW.md` § Review gates — auto-approve on a
+   qualifying confidence score (opt-in, no hard cap fired), otherwise set
+   `02-plan.md` `status: in-review`, present the summary, doc path, and
+   review findings to the human, STOP and wait.
 
 ## Exit
 
-Human approves → `02-plan.md` `status: approved` + `approved_at:`, work item
+Approved (human, or auto per the gate procedure) → `02-plan.md`
+`status: approved` + `approved_at:` + `approved_by:`, work item
 `status: impl-planning`. Changes requested → `status: changes-requested`,
-revise, re-present.
+revise, re-present (the reviewer runs again on the revision).
 
 ## Hard rules
 

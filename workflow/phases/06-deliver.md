@@ -12,7 +12,7 @@ Verification is complete and everything is green. Status is `delivering`.
 2. GATE: present the verification report summary plus a proposed MR
    title/description per repo (apply `config/preferences.md` MR format) to
    the human. Wait for explicit approval — per
-   `workflow/WORKFLOW.md` § Human gates.
+   `workflow/WORKFLOW.md` § Review gates.
 3. On approval, per affected repo:
    - Push the branch from its worktree: `git push -u origin <branch>` (the
      branch named in the implementation plan's `## Delivery` section — ask
