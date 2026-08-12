@@ -5,6 +5,20 @@ presented (or auto-approved) — see `WORKFLOW.md` § Review gates. The reviewer
 is read-only on everything except its own report file. Give it the
 work-item folder path, which gate doc to review, and this brief.
 
+**Platform definitions.** This file is the canonical spec. Two full native
+definitions embed it so each platform's subagent features apply — isolated
+context, restricted tools, pinned model:
+
+- Claude Code: `.claude/agents/plan-reviewer.md` (invoked as the
+  `plan-reviewer` agent; `model:` pinned strong).
+- Copilot / VS Code: `.github/chatmodes/plan-reviewer.chatmode.md` (a
+  custom chat mode; set its `model:` to a strong option from your picker).
+
+Keep all three in sync — a spec change here must be mirrored into both.
+Any other agent: dispatch a read-only subagent with this brief verbatim, on
+a strong model — the review is cheap (a few docs in, one report out) but
+its score can bypass a human gate, so it is the wrong place to economize.
+
 ## Inputs (read all of them before judging)
 
 - The gate doc under review: `02-plan.md` (gate 1) or
