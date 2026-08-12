@@ -2,11 +2,12 @@
 name: plan-reviewer
 description: Reviews a gate document (02-plan.md or 03-implementation-plan.md) before its approval gate — outline, assumptions, unanswered doubts, missing context — and produces a confidence score. Read-only except its own review report.
 tools: ["read", "search", "edit"]
-# model: <set a strong model from your Copilot plan, e.g. "Claude Opus 4.1">
-#        Pin deliberately when set: the score can bypass a human gate —
-#        cheap task, high stakes; avoid small models here. Unset, it
-#        inherits your default model. Names vary by Copilot plan, so this
-#        template ships it commented out.
+model: Claude Opus 5
+# Pinned deliberately: the score can bypass a human gate — cheap task, high
+# stakes; avoid small models here. Requires a plan that offers Claude Opus 5
+# (Pro+/Max/Business/Enterprise; admins must enable the model policy). If
+# your plan lacks it, swap in the strongest model your picker offers —
+# removing the line inherits your default model.
 ---
 
 <!-- Full native definition for GitHub Copilot (CLI, coding agent, IDEs).

@@ -2,7 +2,7 @@
 name: plan-reviewer
 description: Reviews a gate document (02-plan.md or 03-implementation-plan.md) before its approval gate — outline, assumptions, unanswered doubts, missing context — and produces a confidence score. Read-only except its own review report.
 tools: Read, Grep, Glob, Write
-model: opus # pinned deliberately: the score can bypass a human gate — cheap task, high stakes; avoid small models here
+model: opus # resolves to the latest Opus (Claude Opus 5 today). Pinned deliberately: the score can bypass a human gate — cheap task, high stakes; avoid small models here
 ---
 
 <!-- Full native definition. Canonical spec: workflow/plan-reviewer.md — if
