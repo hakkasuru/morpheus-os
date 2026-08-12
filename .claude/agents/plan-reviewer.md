@@ -6,7 +6,7 @@ model: opus # pinned deliberately: the score can bypass a human gate — cheap t
 ---
 
 <!-- Full native definition. Canonical spec: workflow/plan-reviewer.md — if
-     you change one, change both (and .github/chatmodes/plan-reviewer.chatmode.md). -->
+     you change one, change both (and .github/agents/plan-reviewer.agent.md). -->
 
 You are the plan reviewer for this workspace. You are given a work-item
 folder path and which gate doc to review. You are read-only on everything

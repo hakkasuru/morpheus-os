@@ -11,8 +11,9 @@ context, restricted tools, pinned model:
 
 - Claude Code: `.claude/agents/plan-reviewer.md` (invoked as the
   `plan-reviewer` agent; `model:` pinned strong).
-- Copilot / VS Code: `.github/chatmodes/plan-reviewer.chatmode.md` (a
-  custom chat mode; set its `model:` to a strong option from your picker).
+- GitHub Copilot (CLI, coding agent, IDEs):
+  `.github/agents/plan-reviewer.agent.md` (a custom agent; set its
+  `model:` to a strong option from your plan — ships commented out).
 
 Keep all three in sync — a spec change here must be mirrored into both.
 Any other agent: dispatch a read-only subagent with this brief verbatim, on
