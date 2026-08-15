@@ -68,7 +68,9 @@ This stays low-conflict because personal layers (`config/`, `work/`,
 `knowledge/`) rarely touch harness machinery (`scripts/`, `workflow/`,
 `templates/`, `AGENTS.md`).
 
-After any upstream pull, run `scripts/validate.sh`: the harness declares
+After any upstream pull, read [`CHANGELOG.md`](CHANGELOG.md) — every
+entry says what changed in behavior and whether your copy needs action.
+Then run `scripts/validate.sh`: the harness declares
 which knowledge-format version it supports, and the validator compares it
 against your knowledge base's `okf_version` stamp — if the update moved
 the format ahead of your docs, it says so and points you at the
