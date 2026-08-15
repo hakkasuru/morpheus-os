@@ -10,21 +10,26 @@ All implementation steps are committed. Status is `verifying`.
    inside the affected worktrees. Capture the real output.
 2. Walk `02-plan.md` `## Acceptance Criteria` one by one. Verify each by
    command or direct observation. Record the evidence.
-3. Self-review the full diff for every affected repo:
-   `git -C <worktree> diff <default_branch>...HEAD`. Check correctness,
-   scope creep, leftover debug output, and style against
-   `knowledge/repos/<id>/conventions.md`.
+3. Independent diff review: for each affected repo, generate the diff
+   file (`git -C <worktree> diff <default_branch>...HEAD > /tmp/<work-id>--<repo-id>.diff`)
+   and dispatch a diff-reviewer subagent per `workflow/diff-reviewer.md`
+   with the diff, the approved plans, and the repo's conventions doc. It
+   writes `04-diff-review.md` and returns PASS or FAIL. FAIL → loop back
+   through `phases/04-execute.md` to fix the blocking findings (revising
+   the impl plan first if the fix needs an unplanned step), then re-run
+   this phase.
 4. Run `scripts/validate.sh` (workspace hygiene).
 5. Create `04-verification.md` from `templates/work/04-verification.md`:
    a per-gate table (gate | command | pass/fail | output excerpt), a
-   criteria checklist with evidence per item, self-review notes, and an
+   criteria checklist with evidence per item, the diff-review verdict
+   (with any MINOR findings carried for the human to see), and an
    overall verdict.
 
 ## Exit
 
-All gates pass and all criteria are met → `status: delivering`. Any
-failure → loop back through `phases/04-execute.md` to fix, or set
-`status: blocked`.
+All gates pass, all criteria are met, and the diff review is PASS →
+`status: delivering`. Any failure → loop back through
+`phases/04-execute.md` to fix, or set `status: blocked`.
 
 ## Hard rules
 

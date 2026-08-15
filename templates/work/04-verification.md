@@ -18,9 +18,10 @@ updated: {{DATE}}
 - [ ] <criterion>
   - Evidence: <command output or observation>
 
-## Diff Self-Review
+## Diff Review
 
-- <note>
+- Verdict: <PASS/FAIL per repo — from `04-diff-review.md`>
+- Carried MINOR findings: <list, or —>
 
 ## Verdict
 
