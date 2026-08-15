@@ -178,9 +178,13 @@ Other things you can do:
 and its `repos/<id>` clone; optionally keep its `knowledge/repos/<id>/`
 section for future reference.
 
-**Housekeeping:** run `scripts/worktree.sh list` periodically to catch
-orphaned worktrees, and keep `config/preferences.md` current as your
-conventions change.
+**Where are we?** `scripts/status.sh` — a token-free dashboard: work items
+by state (flagging gates waiting on you and blocked items), worktrees
+(flagging orphans), repo clone state, and validation warnings.
+
+**Housekeeping:** run `scripts/status.sh` periodically (it subsumes
+`worktree.sh list` and the validation sweep), and keep
+`config/preferences.md` current as your conventions change.
 
 **Sharing knowledge bundles:** the knowledge base speaks
 [OKF](https://github.com/GoogleCloudPlatform/knowledge-catalog) — a
