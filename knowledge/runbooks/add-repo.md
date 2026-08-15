@@ -4,7 +4,7 @@ title: "Add repo"
 description: "Register a new repo, clone it, detect its quality gates, and seed its knowledge-base section."
 status: stable
 created: 2026-08-01
-updated: 2026-08-01
+updated: 2026-08-10
 stale_after: null # YYYY-MM-DD — re-verify after this date
 tags: [repo, registry, onboarding, knowledge-base]
 repo: null
@@ -64,10 +64,13 @@ The human says "add repo `<url>`", or this runbook is invoked from within
      `status: draft`, `repo: <id>`, `generated_by: <your agent name>`.
    - `conventions.md` — same template/status/repo/generated_by.
 
-   Populate both by read-only exploration of `repos/<id>`: structure,
-   entry points, key modules, data flow for `architecture.md`; code style,
-   test layout, and branch/MR habits from `git log` for `conventions.md`.
-   Never invent content the exploration didn't turn up.
+   Populate both via the explorer subagent (`workflow/explorer.md`):
+   structure, entry points, key modules, data flow for `architecture.md`;
+   code style and test layout for `conventions.md`. The explorer cannot
+   run commands — run `git -C repos/<id> log --oneline -30` (and similar)
+   yourself and paste the excerpts into its mission brief for the
+   branch/MR-habits part. Never invent content the exploration didn't
+   turn up.
 
 6. Run validation.
 

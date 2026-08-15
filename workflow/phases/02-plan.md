@@ -7,7 +7,10 @@ Status is `planning` (context complete).
 ## Steps
 
 1. Create `02-plan.md` from `templates/work/02-plan.md`.
-2. Fill it in, applying `config/preferences.md` (plan verbosity) as you go:
+2. If drafting exposes a gap `01-context.md` doesn't cover, don't guess:
+   dispatch an explorer subagent per `workflow/explorer.md` for the
+   missing facts and append its findings to `01-context.md` first.
+3. Fill it in, applying `config/preferences.md` (plan verbosity) as you go:
    - `## Problem & Goal`
    - `## Proposed Approach` — include alternatives considered and why they
      were rejected, briefly.
@@ -17,7 +20,7 @@ Status is `planning` (context complete).
    - `## Acceptance Criteria` — final, testable versions. Copy these back
      into `task.md` `## Acceptance Criteria`, replacing the draft criteria
      from intake.
-3. GATE: set the work item's `status: plan-review`, then dispatch a
+4. GATE: set the work item's `status: plan-review`, then dispatch a
    plan-review subagent per `workflow/plan-reviewer.md` and run the gate
    procedure in `workflow/WORKFLOW.md` § Review gates — auto-approve on a
    qualifying confidence score (opt-in, no hard cap fired), otherwise set

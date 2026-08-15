@@ -125,6 +125,8 @@ The main session is the orchestrator: it holds workspace context and never
 implements directly. Implementation is delegated to subagents with
 self-contained briefs — goal, worktree path, files, constraints, and a
 verification command (see `workflow/phases/04-execute.md`). Read-only
-exploration may also be delegated. Always review a subagent's output
-before building on it — a subagent's report describes what it intended to
-do, not necessarily what it verified.
+exploration is delegated to the explorer subagent
+(`workflow/explorer.md`); gate reviews to the plan-reviewer subagent
+(`workflow/plan-reviewer.md`). Always review a subagent's output before
+building on it — a subagent's report describes what it intended to do,
+not necessarily what it verified.
