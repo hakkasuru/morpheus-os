@@ -53,7 +53,11 @@ its score can bypass a human gate, so it is the wrong place to economize.
    deletion, schema change, history rewrite), security/auth/secret
    handling, cross-repo coupling, external side effects.
 7. Gate 2 only: every step specific enough for a context-free subagent;
-   every step has a verify command; quality gates match the repo's
+   every step has a verify command and a `Depends on:` field; the
+   `## Execution Order` stages are consistent with the declared
+   dependencies (no cycles, each step staged after all its dependencies)
+   and same-stage steps are genuinely independent — disjoint files, no
+   hidden data/API dependency between them; quality gates match the repo's
    `commands:` in `config/repos.yaml`; branch/delivery details follow the
    repo's `branch_prefix` and the preferences branch-naming scheme.
 
