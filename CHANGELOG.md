@@ -20,6 +20,14 @@ Every entry answers: **Action needed after pulling?**
 - **`scripts/status.sh`** — token-free dashboard: work items (flags gates
   waiting on you, blocked items), worktrees (flags orphans), repo clone
   state, validation warnings.
+- **Hardening batch** (the deferred-minors ledger, cleared): duplicate
+  registry ids now warn; CRLF-authored knowledge docs parse correctly
+  instead of failing with a misleading diagnosis; accented titles
+  transliterate to ASCII slugs where iconv supports it; titles containing
+  quotes produce valid YAML; `new-work.sh --parent` refuses epic folders
+  outside `work/`; the usage-error contract is centralized in `lib.sh`;
+  missing-registry errors print once; `worktree.sh remove` prunes stale
+  registrations when the directory was deleted by hand.
 - **Action needed after pulling?** No. In-flight items simply gain the
   diff review the next time they pass through phase 05.
 

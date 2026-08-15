@@ -21,12 +21,6 @@ Options:
 EOF
 }
 
-usage_error() {
-  printf 'error: %s\n' "$*" >&2
-  usage >&2
-  exit 2
-}
-
 repo_filter=""
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -35,16 +29,16 @@ while [ $# -gt 0 ]; do
       exit 0
       ;;
     --repo)
-      [ $# -ge 2 ] || usage_error "--repo requires an id"
+      [ $# -ge 2 ] || mos_usage_error "--repo requires an id"
       repo_filter="$2"
       shift 2
       ;;
     --repo=*)
       repo_filter="${1#--repo=}"
-      [ -n "$repo_filter" ] || usage_error "--repo requires an id"
+      [ -n "$repo_filter" ] || mos_usage_error "--repo requires an id"
       shift
       ;;
-    *) usage_error "unexpected argument: $1" ;;
+    *) mos_usage_error "unexpected argument: $1" ;;
   esac
 done
 

@@ -23,12 +23,6 @@ Options:
 EOF
 }
 
-usage_error() {
-  printf 'error: %s\n' "$*" >&2
-  usage >&2
-  exit 2
-}
-
 bundle_filter=""
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -37,16 +31,16 @@ while [ $# -gt 0 ]; do
       exit 0
       ;;
     --bundle)
-      [ $# -ge 2 ] || usage_error "--bundle requires a name"
+      [ $# -ge 2 ] || mos_usage_error "--bundle requires a name"
       bundle_filter="$2"
       shift 2
       ;;
     --bundle=*)
       bundle_filter="${1#--bundle=}"
-      [ -n "$bundle_filter" ] || usage_error "--bundle requires a name"
+      [ -n "$bundle_filter" ] || mos_usage_error "--bundle requires a name"
       shift
       ;;
-    *) usage_error "unexpected argument: $1" ;;
+    *) mos_usage_error "unexpected argument: $1" ;;
   esac
 done
 

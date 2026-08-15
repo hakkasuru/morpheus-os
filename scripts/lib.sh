@@ -75,8 +75,17 @@ mos_days_ago_iso() {
 # otherwise). The result goes through a variable so the trailing newline is
 # ours: fed input without a final newline, BSD sed emits none and GNU sed does.
 mos_slugify() {
-  local slug
-  slug=$(printf '%s' "${1:-}" |
+  local text slug translit
+  text="${1:-}"
+  # Transliterate accents to ASCII when iconv can. Adopt the result only on
+  # success — a failing iconv may emit PARTIAL output before dying, and
+  # partial + fallback would concatenate garbage.
+  if command -v iconv >/dev/null 2>&1; then
+    if translit=$(printf '%s' "$text" | iconv -f UTF-8 -t ASCII//TRANSLIT 2>/dev/null); then
+      text="$translit"
+    fi
+  fi
+  slug=$(printf '%s' "$text" |
     LC_ALL=C tr '\n' '-' |
     LC_ALL=C tr '[:upper:]' '[:lower:]' |
     LC_ALL=C sed -e 's/[^a-z0-9]/-/g' -e 's/--*/-/g' -e 's/^-//' -e 's/-*$//')
@@ -93,8 +102,9 @@ mos_slugify() {
 mos__awk_scalar() {
   cat <<'AWK'
 function mos_trim(v) {
+  # \r: tolerate CRLF-authored files — both parsers route values through here
   sub(/^[ \t]+/, "", v)
-  sub(/[ \t]+$/, "", v)
+  sub(/[ \t\r]+$/, "", v)
   return v
 }
 function mos_scalar(v, strip_comment,   q, first, last) {
@@ -115,6 +125,15 @@ AWK
 # mos_registry_path — absolute path of config/repos.yaml.
 mos_registry_path() {
   printf '%s/config/repos.yaml\n' "$(mos_root)"
+}
+
+# mos_usage_error "<msg>" — usage-error contract shared by every CLI:
+# error to stderr, the caller's usage() to stderr, exit 2. Each script
+# defines its own usage() before first use.
+mos_usage_error() {
+  printf 'error: %s\n' "$*" >&2
+  usage >&2
+  exit 2
 }
 
 # mos_bundles_path — absolute path of config/bundles.yaml.
@@ -150,7 +169,13 @@ mos__yaml_query() {
       in_commands = 0
       cur = mos_scalar(substr(line, p + length(ekey) + 1), 1)
       in_entry = (cur == want_id)
-      if (mode == "ids" && cur != "") print cur
+      if (mode == "ids" && cur != "") {
+        if (warn == 1 && (cur in mos_seen)) {
+          printf "warning: %s:%d: duplicate entry \"%s\" — lookups use the first occurrence\n", FILENAME, FNR, cur > "/dev/stderr"
+        }
+        mos_seen[cur] = 1
+        print cur
+      }
       next
     }
     # A registry entry is recognised by the entry key being its first key.

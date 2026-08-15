@@ -28,21 +28,15 @@ Options:
 EOF
 }
 
-usage_error() {
-  printf 'error: %s\n' "$*" >&2
-  usage >&2
-  exit 2
-}
-
 case "${1:-}" in
   '') : ;;
   -h | --help)
     usage
     exit 0
     ;;
-  *) usage_error "unexpected argument: $1" ;;
+  *) mos_usage_error "unexpected argument: $1" ;;
 esac
-[ $# -le 1 ] || usage_error "validate.sh takes no arguments"
+[ $# -le 1 ] || mos_usage_error "validate.sh takes no arguments"
 
 # The twelve legal work-item statuses — see workflow/WORKFLOW.md.
 STATUSES="intake context planning plan-review impl-planning impl-review executing verifying delivering done blocked cancelled"

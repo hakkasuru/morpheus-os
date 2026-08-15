@@ -35,16 +35,10 @@ Neither repo ids nor work ids may contain "--" (the folder-name separator).
 EOF
 }
 
-usage_error() {
-  printf 'error: %s\n' "$*" >&2
-  usage >&2
-  exit 2
-}
-
 # check_id <kind> <value> — reject empty ids, "--" and path separators.
 check_id() {
   local kind="$1" value="$2"
-  [ -n "$value" ] || usage_error "missing $kind"
+  [ -n "$value" ] || mos_usage_error "missing $kind"
   case "$value" in
     *--*) mos_die "$kind '$value' contains '--', which is the worktrees/<repo-id>--<work-id> separator — rename it" ;;
     */* | .* ) mos_die "$kind '$value' must be a plain name (no '/' and no leading '.')" ;;
@@ -66,6 +60,9 @@ cmd_add() {
   local repo_id="$1" work_id="$2" branch="$3" dir branch_base worktree prefix
   check_id "repo-id" "$repo_id"
   check_id "work-id" "$work_id"
+  # Checked here, at top level: a die inside the $(repo_dir ...) substitution
+  # below cannot stop helpers there from each printing their own error.
+  [ -f "$(mos_registry_path)" ] || mos_die "registry not found: $(mos_registry_path)"
   dir=$(repo_dir "$repo_id")
 
   branch_base=$(mos_yaml_repo_field "$repo_id" default_branch || true)
@@ -96,10 +93,16 @@ cmd_remove() {
   local repo_id="$1" work_id="$2" delete_branch="$3" dir worktree branch
   check_id "repo-id" "$repo_id"
   check_id "work-id" "$work_id"
+  [ -f "$(mos_registry_path)" ] || mos_die "registry not found: $(mos_registry_path)"
   dir=$(repo_dir "$repo_id")
 
   worktree="$(mos_root)/worktrees/${repo_id}--${work_id}"
-  [ -d "$worktree" ] || mos_die "no worktree at $worktree"
+  if [ ! -d "$worktree" ]; then
+    # The directory may have been deleted by hand, leaving a stale git
+    # registration behind — clean that up before reporting.
+    git -C "$dir" worktree prune
+    mos_die "no worktree at $worktree (stale git registrations pruned)"
+  fi
 
   # The branch name is configurable (branch_prefix / --branch at add time),
   # so ask the worktree what it actually has checked out — before removing it.
@@ -132,7 +135,7 @@ cmd_list() {
   done
 }
 
-[ $# -ge 1 ] || usage_error "missing subcommand"
+[ $# -ge 1 ] || mos_usage_error "missing subcommand"
 subcommand="$1"
 shift
 
@@ -148,29 +151,29 @@ case "$subcommand" in
     while [ $# -gt 0 ]; do
       case "$1" in
         --branch)
-          [ $# -ge 2 ] || usage_error "--branch requires a name"
+          [ $# -ge 2 ] || mos_usage_error "--branch requires a name"
           add_branch="$2"
           shift
           ;;
         --branch=*)
           add_branch="${1#--branch=}"
-          [ -n "$add_branch" ] || usage_error "--branch requires a name"
+          [ -n "$add_branch" ] || mos_usage_error "--branch requires a name"
           ;;
-        -*) usage_error "unknown option: $1" ;;
+        -*) mos_usage_error "unknown option: $1" ;;
         *)
           if [ -z "$add_repo_id" ]; then
             add_repo_id="$1"
           elif [ -z "$add_work_id" ]; then
             add_work_id="$1"
           else
-            usage_error "unexpected argument: $1"
+            mos_usage_error "unexpected argument: $1"
           fi
           ;;
       esac
       shift
     done
-    [ -n "$add_repo_id" ] || usage_error "add takes <repo-id> <work-id> [--branch <name>]"
-    [ -n "$add_work_id" ] || usage_error "add takes <repo-id> <work-id> [--branch <name>]"
+    [ -n "$add_repo_id" ] || mos_usage_error "add takes <repo-id> <work-id> [--branch <name>]"
+    [ -n "$add_work_id" ] || mos_usage_error "add takes <repo-id> <work-id> [--branch <name>]"
     cmd_add "$add_repo_id" "$add_work_id" "$add_branch"
     ;;
   remove)
@@ -180,26 +183,26 @@ case "$subcommand" in
     while [ $# -gt 0 ]; do
       case "$1" in
         --delete-branch) delete_branch="yes" ;;
-        -*) usage_error "unknown option: $1" ;;
+        -*) mos_usage_error "unknown option: $1" ;;
         *)
           if [ -z "$rm_repo_id" ]; then
             rm_repo_id="$1"
           elif [ -z "$rm_work_id" ]; then
             rm_work_id="$1"
           else
-            usage_error "unexpected argument: $1"
+            mos_usage_error "unexpected argument: $1"
           fi
           ;;
       esac
       shift
     done
-    [ -n "$rm_repo_id" ] || usage_error "remove takes <repo-id> <work-id> [--delete-branch]"
-    [ -n "$rm_work_id" ] || usage_error "remove takes <repo-id> <work-id> [--delete-branch]"
+    [ -n "$rm_repo_id" ] || mos_usage_error "remove takes <repo-id> <work-id> [--delete-branch]"
+    [ -n "$rm_work_id" ] || mos_usage_error "remove takes <repo-id> <work-id> [--delete-branch]"
     cmd_remove "$rm_repo_id" "$rm_work_id" "$delete_branch"
     ;;
   list)
-    [ $# -eq 0 ] || usage_error "list takes no arguments"
+    [ $# -eq 0 ] || mos_usage_error "list takes no arguments"
     cmd_list
     ;;
-  *) usage_error "unknown subcommand: $subcommand" ;;
+  *) mos_usage_error "unknown subcommand: $subcommand" ;;
 esac

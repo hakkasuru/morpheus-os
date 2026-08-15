@@ -27,11 +27,7 @@ case "${1:-}" in
     usage
     exit 0
     ;;
-  *)
-    printf 'error: unexpected argument: %s\n' "$1" >&2
-    usage >&2
-    exit 2
-    ;;
+  *) mos_usage_error "unexpected argument: $1" ;;
 esac
 
 root=$(mos_root)
