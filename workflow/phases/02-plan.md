@@ -32,7 +32,9 @@ Status is `planning` (context complete).
 Approved (human, or auto per the gate procedure) → `02-plan.md`
 `status: approved` + `approved_at:` + `approved_by:`, work item
 `status: impl-planning`. Changes requested → `status: changes-requested`,
-revise, re-present (the reviewer runs again on the revision).
+revise, re-present (the reviewer runs again on the revision; autonomous
+rounds are bounded by the loop policy in `workflow/WORKFLOW.md` § Review
+gates — human-driven rounds are not).
 
 ## Hard rules
 

@@ -39,6 +39,13 @@ Squash vs merge preference
   to you, destructive steps, or security-touching scope always come to you.
   Leave commented out to review every plan yourself.)
 
+Max autonomous review rounds (only matters when auto-approval is enabled)
+- Max autonomous review rounds: 2
+  (revise + re-review cycles the orchestrator may run at gates 1-2 without
+  you before presenting — see WORKFLOW.md § Review gates loop policy.
+  Human-driven changes-requested rounds never count and reset the counter.
+  Defaults to 2 when unset.)
+
 Plan verbosity
 - Verbosity: detailed plans with rationale
 

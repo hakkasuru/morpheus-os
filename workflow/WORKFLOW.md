@@ -73,14 +73,47 @@ Gates 1-2 (plan-review, impl-review) use their doc's own approval-state field
    <review-doc>)`, and advance. The human can veto any auto-approval later
    by setting `status: changes-requested` — treat that like any
    changes-requested loop.
-3. **Otherwise (no threshold set, score below it, or a cap fired):** set
-   the doc `status: in-review`, present a concise summary, the doc path,
-   and the review's score + top findings, then STOP and wait.
+3. **Autonomous revision (opt-in, bounded):** auto-approval is enabled,
+   the score fell short, and NO stop condition in the loop policy below
+   fired → the orchestrator may revise the doc against the review's
+   findings and re-dispatch the reviewer (back to step 1). Append an
+   Activity line per round:
+   `- YYYY-MM-DD — gate review round <n> (confidence <score>)`.
+4. **Otherwise (no threshold set, a stop condition fired, or a hard cap
+   fired):** set the doc `status: in-review`, present a concise summary,
+   the doc path, and the review's score + top findings — plus, after any
+   autonomous rounds, the round history (scores, what improved, what's
+   still open) — then STOP and wait.
    Approved → `status: approved` + `approved_at: <date>` +
    `approved_by: human`, advance the work item's `status:` per the map
    below. Changes requested → `status: changes-requested`, revise,
-   re-present — the reviewer runs again on the revised doc (loop until
-   approved).
+   re-present — the reviewer runs again on the revised doc, and the loop
+   continues until the human approves. Human-driven rounds are unbounded
+   by design and reset the autonomous round counter to zero.
+
+**Loop policy — stop conditions.** An *autonomous round* is one
+revise-and-re-review cycle with no human contact in between (step 3).
+After every review, check these in order; the first that fires ends
+autonomous revision and routes the gate to step 4 (the human):
+
+1. **Inherent cap** — the review fired a hard cap classified `inherent`
+   (a property of the task, not the doc — revision can never lift it,
+   see `plan-reviewer.md` § Hard caps). Go to the human immediately,
+   listing the fixable findings too, so one pass of human feedback can
+   cover everything.
+2. **Near miss** — the score is within 5 points below the threshold. A
+   human glance costs less than another revise + re-review cycle.
+3. **No progress** — the score improved by fewer than 5 points since the
+   previous round, or any finding stands unresolved or disputed across
+   two consecutive reviews.
+4. **Round cap** — the autonomous rounds already spent at this gate have
+   reached the limit (`Max autonomous review rounds` in
+   `config/preferences.md`; 2 when unset).
+
+The counter counts autonomous rounds only and resets to zero on any human
+input at the gate (approval, changes-requested, veto). The reviewer's
+report carries `review_round:` and `previous_confidence:` so the counter
+and the no-progress check survive context loss.
 
 Gate 3 (delivering) has no such doc field — approval is interactive only and
 is NEVER auto-approved, whatever the preferences say: the human's explicit
@@ -129,6 +162,9 @@ On every status change, append one line to `task.md`/`epic.md` `## Activity`:
 - Never skip a gate. Gates 1-2 may be auto-approved only via the documented
   plan-review procedure (opt-in threshold in `config/preferences.md`, no
   hard cap fired); gate 3 always requires the human.
+- Gate loops are bounded: autonomous revise-and-re-review rounds follow
+  the § Review gates loop policy — when a stop condition fires, present
+  to the human. Never keep revising to chase a threshold.
 - Never advance `status:` without its exit condition met.
 - Blocked beats guessing — if information is missing or a check fails, set
   `status: blocked` and ask; never improvise past it.

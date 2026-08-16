@@ -39,7 +39,8 @@ Approved (human, or auto per the gate procedure) →
 `03-implementation-plan.md` `status: approved` + `approved_at:` +
 `approved_by:`, work item `status: executing`. Changes requested →
 `status: changes-requested`, revise, re-present (the reviewer runs again on
-the revision).
+the revision; autonomous rounds are bounded by the loop policy in
+`workflow/WORKFLOW.md` § Review gates — human-driven rounds are not).
 
 ## Hard rules
 

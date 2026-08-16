@@ -6,6 +6,28 @@ pulling (`git pull upstream main`). Machinery details live in `git log`.
 
 Every entry answers: **Action needed after pulling?**
 
+## 2026-08-16
+
+- **Bounded gate-review loops** (`WORKFLOW.md` § Review gates, loop
+  policy). Autonomous revise + re-review rounds at gates 1-2 (possible
+  only with auto-approval enabled) now stop at the first of: an inherent
+  hard cap (security scope, unavoidable destructive step — straight to
+  the human, no revision round), a near-miss score (within 5 points of
+  the threshold), no progress (score up by <5, or a finding unresolved
+  twice), or the round cap (`Max autonomous review rounds` in
+  `config/preferences.md`, default 2). Human-driven changes-requested
+  rounds stay unbounded and reset the counter.
+- **Delta-aware re-reviews** (`workflow/plan-reviewer.md` + both native
+  definitions). On round 2+ the reviewer reads the prior report and
+  dispositions every prior finding (resolved / unresolved / disputed);
+  late findings are allowed but flagged `new-in-round-<n>`; the score is
+  recomputed from scratch each round. Fired hard caps are classified
+  inherent vs fixable; reports gain `inherent_cap:`, `review_round:`,
+  `previous_confidence:` frontmatter.
+- **Action needed after pulling?** No — only relevant if you enabled
+  auto-approval; the round cap defaults to 2, override it in
+  `config/preferences.md`.
+
 ## 2026-08-15
 
 - **Native implementer subagent** (`workflow/implementer.md` + Claude/
