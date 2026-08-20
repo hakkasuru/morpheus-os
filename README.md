@@ -64,6 +64,16 @@ git remote add upstream <public-template-url>
 git pull upstream main
 ```
 
+**Recommended: never push to the template origin.** Your workspace
+(registry, preferences, knowledge base) must not land on the public
+template repo. Re-point `origin` to your own repo *before* your first
+push (as shown above), and if you keep the template as `upstream`,
+disable pushes to it so an accidental `git push upstream` can't happen:
+
+```
+git remote set-url --push upstream DISABLED
+```
+
 This stays low-conflict because personal layers (`config/`, `work/`,
 `knowledge/`) rarely touch harness machinery (`scripts/`, `workflow/`,
 `templates/`, `AGENTS.md`).
