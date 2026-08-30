@@ -3,5 +3,9 @@ mode: agent
 description: Start a new task, story, or epic
 ---
 
-Run `scripts/new-work.sh` with the type and title from the text given after this command (default type task).
-Move the folder to work/active/, set status context, and begin phase 01 per `workflow/phases/01-context.md`.
+For the type and title in the text given after this command (default type
+task), follow `workflow/phases/00-intake.md`: scaffold via
+`scripts/new-work.sh`, frame task.md (Request verbatim, draft acceptance
+criteria, repos:), then advance to context and begin
+`workflow/phases/01-context.md` — unless the human wants it parked in the
+backlog.

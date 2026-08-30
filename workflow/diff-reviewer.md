@@ -21,9 +21,9 @@ on a strong model — same reasoning as the plan-reviewer: cheap task, high
 stakes.
 
 The reviewer has no shell. The orchestrator generates the diff file first —
-`git -C worktrees/<repo-id>--<work-id> diff <default_branch>...HEAD > /tmp/<work-id>--<repo-id>.diff`
-(any untracked path is fine; never inside `work/`) — and hands over its
-path.
+`git -C worktrees/<repo-id>--<work-id> diff origin/<default_branch>...HEAD > /tmp/<work-id>--<repo-id>.diff`
+(against origin/, not the possibly-stale local branch; any untracked path
+is fine; never inside `work/`) — and hands over its path.
 
 ## Inputs (the orchestrator provides paths to all of these)
 

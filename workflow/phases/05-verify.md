@@ -11,7 +11,10 @@ All implementation steps are committed. Status is `verifying`.
 2. Walk `02-plan.md` `## Acceptance Criteria` one by one. Verify each by
    command or direct observation. Record the evidence.
 3. Independent diff review: for each affected repo, generate the diff
-   file (`git -C <worktree> diff <default_branch>...HEAD > /tmp/<work-id>--<repo-id>.diff`)
+   file (`git -C <worktree> diff origin/<default_branch>...HEAD > /tmp/<work-id>--<repo-id>.diff`
+   — against origin/, not the local branch: the local default branch can
+   lag the fetch the worktree was branched from, and a stale merge-base
+   would drag unrelated upstream commits into the reviewed diff)
    and dispatch a diff-reviewer subagent per `workflow/diff-reviewer.md`
    with the diff, the approved plans, and the repo's conventions doc. It
    writes `04-diff-review.md` and returns PASS or FAIL. FAIL → loop back

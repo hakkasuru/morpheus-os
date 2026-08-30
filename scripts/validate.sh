@@ -115,7 +115,7 @@ rel() {
 }
 
 validate_work_doc() {
-  local file="$1" folder base doc where wtype status id f
+  local file="$1" folder base doc where wtype status id f repos_val
   folder=$(dirname "$file")
   base=$(basename "$folder")
   doc=$(basename "$file")
@@ -208,6 +208,16 @@ validate_work_doc() {
   check
   if [ -f "$folder/04-verification.md" ] && ! in_set "$status" "executing verifying delivering done"; then
     v_error "$where: 04-verification.md exists while status is '$status' — it may only exist while executing, verifying, delivering or done"
+  fi
+
+  # An empty repos: past intake means phase 01 silently skips the KB read
+  # for every affected repo. Warn, don't error: the template ships
+  # "repos: []", block-style lists read as empty scalars here (so only the
+  # literal inline empty list fires), and knowledge-only work is legal.
+  check
+  repos_val=$(field "$file" repos)
+  if [ "$repos_val" = "[]" ] && ! in_set "$status" "intake blocked cancelled done"; then
+    v_warn "$where: repos is [] while status is '$status' — fill repos: with the registered repo ids this work touches (workflow/phases/00-intake.md)"
   fi
 }
 

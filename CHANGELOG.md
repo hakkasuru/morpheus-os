@@ -18,6 +18,15 @@ Every entry answers: **Action needed after pulling?**
   findings move into the MR description, and every auto-delivery is
   recorded in the task's Activity log
   (`delivery auto-approved (Auto-deliver: on)`).
+- **Intake phase doc** (`workflow/phases/00-intake.md`). Intake's exit is
+  now explicit: `## Request` pasted verbatim, draft acceptance criteria,
+  and a filled `repos:` before entering context. `validate.sh` warns when
+  a task/story past intake still has `repos: []`.
+- **Diff baseline fix** (`phases/05-verify.md`, `workflow/diff-reviewer.md`).
+  The pre-delivery diff is generated against `origin/<default_branch>`,
+  not the local default branch — a lagging local branch used to drag
+  unrelated upstream commits into the reviewed diff, which the
+  diff-reviewer would then FAIL as unexplained changes.
 - **Action needed after pulling?** No — off by default; delivery keeps
   waiting for you unless you uncomment `Auto-deliver: on` in
   `config/preferences.md`.

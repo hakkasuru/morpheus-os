@@ -131,7 +131,7 @@ Record the outcome via `mr:` in task.md plus an Activity line:
 
 | Phase           | Doc created                     | Exit condition                          | Next status     |
 |-----------------|----------------------------------|-------------------------------------------|-----------------|
-| intake          | `task.md` (via `new-work.sh`)    | `task.md` exists                          | context         |
+| intake          | `task.md` (via `new-work.sh`)    | framed per `phases/00-intake.md`: Request verbatim, draft criteria, `repos:` filled | context         |
 | context         | `01-context.md`                  | complete, questions answered              | planning        |
 | planning        | `02-plan.md`                     | drafted                                   | plan-review     |
 | plan-review     | `02-plan-review.md` (subagent)    | approved (human or auto)                  | impl-planning   |
