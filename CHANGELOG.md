@@ -6,6 +6,22 @@ pulling (`git pull upstream main`). Machinery details live in `git log`.
 
 Every entry answers: **Action needed after pulling?**
 
+## 2026-08-30
+
+- **Opt-in auto-delivery (gate 3)** (`WORKFLOW.md` § Review gates,
+  `phases/06-deliver.md`, `config/preferences.md`). Setting
+  `Auto-deliver: on` in `config/preferences.md` lets a fully green run —
+  every quality gate green in `04-verification.md` AND a PASS diff
+  review — push and create its MR without waiting at the delivery
+  confirm. Anything less (a red gate, a FAIL or missing diff review, a
+  blocked item) still stops for the human. Carried MINOR diff-review
+  findings move into the MR description, and every auto-delivery is
+  recorded in the task's Activity log
+  (`delivery auto-approved (Auto-deliver: on)`).
+- **Action needed after pulling?** No — off by default; delivery keeps
+  waiting for you unless you uncomment `Auto-deliver: on` in
+  `config/preferences.md`.
+
 ## 2026-08-16
 
 - **Bounded gate-review loops** (`WORKFLOW.md` § Review gates, loop

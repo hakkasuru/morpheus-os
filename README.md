@@ -31,14 +31,15 @@ flowchart LR
     plan_review --> impl_planning["impl-planning"]
     impl_planning --> impl_review{{"IMPL REVIEW (human or auto)"}}
     impl_review --> executing --> verifying
-    verifying --> delivery_confirm{{"DELIVERY CONFIRM (human, always)"}}
+    verifying --> delivery_confirm{{"DELIVERY CONFIRM (human, or opt-in auto)"}}
     delivery_confirm --> done
 ```
 
 There are three review gates: after the plan, after the implementation
 plan, and before anything is pushed or opened as an MR/PR. A plan-review
 subagent audits the first two and can auto-approve high-confidence plans
-when you opt in (see How to use it); the delivery gate is always yours.
+when you opt in (see How to use it); the delivery gate is yours by
+default, with its own opt-in (`Auto-deliver`) for fully green runs.
 
 ## First-time setup
 
@@ -153,7 +154,7 @@ scripts/new-work.sh task|story|epic "<title>"
 | impl-review | Same subagent review as plan-review, against the implementation plan. | **Approve or revise the implementation plan** — same optional auto-approval. |
 | executing | Agent delegates implementation to subagents in worktrees. | — |
 | verifying | Agent runs verification commands. | — |
-| delivering | — | **Confirm before push / MR / PR — always; delivery never auto-approves.** |
+| delivering | — | **Confirm before push / MR / PR** — unless you've enabled `Auto-deliver` and the run is fully green (verification + diff review PASS). |
 | done | Work item is closed out and learnings are harvested to the KB. | — |
 
 Review gates 1–2 can approve automatically: set an auto-approve threshold in
@@ -164,6 +165,13 @@ scope come to you regardless of score (see `workflow/plan-reviewer.md`).
 Every auto-approval is recorded in the doc (`approved_by:`) and the task's
 Activity log, and you can veto one after the fact by setting the doc to
 `changes-requested`.
+
+The delivery gate has its own opt-in: set `Auto-deliver: on` in
+`config/preferences.md` and a fully green run — every quality gate green
+in the verification report AND a PASS diff review — pushes and opens its
+MR without waiting for you (carried MINOR diff-review findings move into
+the MR description). Anything less still stops for you, and every
+auto-delivery lands in the task's Activity log.
 
 Other things you can do:
 

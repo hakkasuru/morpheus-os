@@ -31,7 +31,7 @@ Squash vs merge preference
 
 ## Working Style
 
-<!-- Plan auto-approval (gates 1-2 only; delivery always needs the human)
+<!-- Plan auto-approval (gates 1-2 only; delivery has its own opt-in — see Auto-deliver below)
 - Auto-approve threshold: 85
   (0-100 confidence from the plan-review subagent — see
   workflow/plan-reviewer.md. Plans scoring at or above the threshold are
@@ -45,6 +45,16 @@ Max autonomous review rounds (only matters when auto-approval is enabled)
   you before presenting — see WORKFLOW.md § Review gates loop policy.
   Human-driven changes-requested rounds never count and reset the counter.
   Defaults to 2 when unset.)
+
+Auto-deliver (gate 3)
+- Auto-deliver: on
+  (push + MR creation proceed without waiting for you when — and only
+  when — 04-verification.md is all green AND the diff review verdict is
+  PASS. Anything less — a red gate, a FAIL or missing diff review, a
+  blocked item — still stops for you. Carried MINOR diff-review findings
+  are listed in the MR description instead of shown at the gate. Every
+  auto-delivery is recorded in the task's Activity log. Leave commented
+  out to confirm every delivery yourself.)
 
 Plan verbosity
 - Verbosity: detailed plans with rationale

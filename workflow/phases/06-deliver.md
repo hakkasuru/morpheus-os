@@ -9,11 +9,18 @@ Verification is complete and everything is green. Status is `delivering`.
 1. Pre-flight: for each affected repo, confirm the host CLI is authenticated
    (`scripts/lib.sh` host detection, then `glab auth status` for GitLab or
    `gh auth status` for GitHub).
-2. GATE: present the verification report summary plus a proposed MR
-   title/description per repo (apply `config/preferences.md` MR format) to
-   the human. Wait for explicit approval — per
-   `workflow/WORKFLOW.md` § Review gates.
-3. On approval, per affected repo:
+2. GATE — per `workflow/WORKFLOW.md` § Review gates:
+   - **Auto-deliver (opt-in):** if `config/preferences.md` sets
+     `Auto-deliver: on` AND `04-verification.md` is all green AND the diff
+     review verdict is PASS → proceed without waiting. List any carried
+     MINOR diff-review findings in the MR description, and use the
+     auto-approved Activity line in step 3. Anything less than fully
+     green — a red gate, a FAIL or missing diff review, a blocked item —
+     is NOT auto-deliverable: fall through to the human.
+   - **Otherwise:** present the verification report summary plus a
+     proposed MR title/description per repo (apply `config/preferences.md`
+     MR format) to the human. Wait for explicit approval.
+3. On approval (human, or auto per the gate), per affected repo:
    - Push the branch from its worktree: `git push -u origin <branch>` (the
      branch named in the implementation plan's `## Delivery` section — ask
      the worktree if unsure: `git symbolic-ref --short HEAD`).
@@ -21,7 +28,9 @@ Verification is complete and everything is green. Status is `delivering`.
      `default_branch`, title, description); GitHub host → `gh pr create`.
    - Record the MR URL in `task.md` `mr:`, and append the gate-3 approval
      record to `## Activity`:
-     `- YYYY-MM-DD — delivery approved, MR created: <url>`.
+     `- YYYY-MM-DD — delivery approved, MR created: <url>` — or, when
+     auto-delivered,
+     `- YYYY-MM-DD — delivery auto-approved (Auto-deliver: on), MR created: <url>`.
 4. Write-time KB harvest (checklist, do not skip any item):
    - Draft new-learning docs from `templates/knowledge/` for anything
      learned this task.
@@ -49,7 +58,9 @@ in place inside its epic's folder.
 
 ## Hard rules
 
-- No push, no MR, without explicit human approval given IN THIS PHASE —
-  approvals from the plan-review or impl-review gates do not carry forward.
+- No push, no MR, without gate-3 approval given IN THIS PHASE — the human's
+  explicit go-ahead, or the documented Auto-deliver procedure
+  (`Auto-deliver: on` + green verification + PASS diff review). Approvals
+  from the plan-review or impl-review gates do not carry forward.
 - Never skip the KB harvest, even for a small task.
 - Leave no orphaned worktrees.

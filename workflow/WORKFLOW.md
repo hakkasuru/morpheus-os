@@ -48,14 +48,14 @@ under it) move to `work/done/`.
 
 Three gates — never implied, never skipped, never batched. Each is a stop:
 gates 1-2 are reviewed by a plan-review subagent (`plan-reviewer.md`) and
-wait for the human unless auto-approval applies; gate 3 always waits for
-the human.
+wait for the human unless auto-approval applies; gate 3 waits for the
+human unless the opt-in Auto-deliver preference applies (see below).
 
 | Gate         | After doc                    | Approves | Phase doc      |
 |--------------|-------------------------------|-----------------|-----------------|
 | plan-review  | `02-plan.md`                   | the WHAT        | `phases/02-plan.md` |
 | impl-review  | `03-implementation-plan.md`    | the HOW         | `phases/03-implementation-plan.md` |
-| delivering   | `04-verification.md`           | the delivery (push + MR) — human, always | `phases/06-deliver.md` |
+| delivering   | `04-verification.md`           | the delivery (push + MR) — human by default, opt-in auto | `phases/06-deliver.md` |
 
 Gates 1-2 (plan-review, impl-review) use their doc's own approval-state field
 — only `02-plan.md` and `03-implementation-plan.md` carry
@@ -115,11 +115,17 @@ input at the gate (approval, changes-requested, veto). The reviewer's
 report carries `review_round:` and `previous_confidence:` so the counter
 and the no-progress check survive context loss.
 
-Gate 3 (delivering) has no such doc field — approval is interactive only and
-is NEVER auto-approved, whatever the preferences say: the human's explicit
-go-ahead in `phases/06-deliver.md`'s gate step authorizes push+MR. Record it
-via `mr:` in task.md plus an Activity line:
-`- YYYY-MM-DD — delivery approved, MR created: <url>`.
+Gate 3 (delivering) has no such doc field — approval is interactive by
+default: the human's explicit go-ahead in `phases/06-deliver.md`'s gate step
+authorizes push+MR. **Auto-deliver (opt-in):** when `config/preferences.md`
+sets `Auto-deliver: on`, the gate proceeds without waiting — but only when
+`04-verification.md` is all green AND the diff review verdict is PASS. Any
+red gate, FAIL or missing diff review, or blocked state still stops for the
+human, and carried MINOR diff-review findings are listed in the MR
+description (they no longer have a guaranteed human viewer at the gate).
+Record the outcome via `mr:` in task.md plus an Activity line:
+`- YYYY-MM-DD — delivery approved, MR created: <url>` (human), or
+`- YYYY-MM-DD — delivery auto-approved (Auto-deliver: on), MR created: <url>`.
 
 ## Phase → doc → exit map
 
@@ -161,7 +167,9 @@ On every status change, append one line to `task.md`/`epic.md` `## Activity`:
 
 - Never skip a gate. Gates 1-2 may be auto-approved only via the documented
   plan-review procedure (opt-in threshold in `config/preferences.md`, no
-  hard cap fired); gate 3 always requires the human.
+  hard cap fired); gate 3 requires the human unless `Auto-deliver: on` is
+  set in `config/preferences.md` and the run is fully green (verification
+  green + diff review PASS — see § Review gates).
 - Gate loops are bounded: autonomous revise-and-re-review rounds follow
   the § Review gates loop policy — when a stop condition fires, present
   to the human. Never keep revising to chase a threshold.
