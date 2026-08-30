@@ -12,6 +12,11 @@ intake → context → planning → plan-review → impl-planning → impl-revie
   → executing → verifying → delivering → done
 ```
 
+Re-entry state: `feedback` — a delivered (`done`) item whose MR drew
+feedback needing code changes re-enters the pipeline at `feedback` and
+flows `feedback → executing → verifying → delivering → done` again.
+Entered only on the human's explicit ask — see § Feedback re-entry.
+
 Exception states (not on the pipeline):
 
 - `blocked` — work cannot proceed; orthogonal to phase, keeps whatever phase
@@ -28,7 +33,7 @@ items only (standalone tasks/stories, and epics themselves):
 | Folder           | Legal status                          |
 |------------------|----------------------------------------|
 | `work/backlog/`  | `intake`                                |
-| `work/active/`   | any pipeline status between `context` and `delivering`, or `blocked` |
+| `work/active/`   | any pipeline status between `context` and `delivering`, `feedback`, or `blocked` |
 | `work/done/`      | `done`, `cancelled`                     |
 
 Moving the folder and updating `status:` are one atomic edit — never do one
@@ -140,6 +145,7 @@ Record the outcome via `mr:` in task.md plus an Activity line:
 | executing       | (commits in worktrees)           | all impl-plan steps done                  | verifying       |
 | verifying       | `04-verification.md`             | complete, all gates pass                  | delivering      |
 | delivering      | MR(s)                             | created, folder moved to `work/done/`     | done            |
+| feedback        | `03-implementation-plan.md` addendum (`feedback-round-<n>` steps) | feedback triaged, addendum approved at gate 2 | executing       |
 
 ## Epic flow
 
@@ -154,6 +160,25 @@ without ever relocating itself (see § States). While children are in flight,
 the epic's own `status:` reflects the furthest-behind child. The epic's
 folder moves to `work/done/` only once every child is `done` or `cancelled` —
 per § States, that move carries the whole epic subtree, children included.
+
+## Feedback re-entry (after delivery)
+
+When a delivered item's MR draws feedback that needs code changes, the
+human asks to address it ("address the feedback on <work-id>") — the
+orchestrator never polls MRs and never reopens items on its own. The
+reopen is one atomic edit: move the folder `work/done/` → `work/active/`
+(an epic child stays in place, as always), set `status: feedback`, append
+`- YYYY-MM-DD — reopened: MR feedback (round <n>)`.
+
+Then follow `phases/07-feedback.md`: recreate worktrees on the existing
+task branches (`scripts/worktree.sh add <repo-id> <work-id> --existing`),
+triage the MR discussion, append the needed steps to
+`03-implementation-plan.md` tagged `feedback-round-<n>`, and re-run gate 2
+on the revision (auto-approval and the loop policy apply as at any gate-2
+visit). From there the normal pipeline applies — executing, verifying,
+delivering — except delivery pushes the existing branch and answers the
+discussion threads instead of creating a new MR (gate 3 / Auto-deliver
+applies as usual).
 
 ## Activity discipline
 

@@ -18,6 +18,15 @@ Every entry answers: **Action needed after pulling?**
   findings move into the MR description, and every auto-delivery is
   recorded in the task's Activity log
   (`delivery auto-approved (Auto-deliver: on)`).
+- **MR feedback loop** (`WORKFLOW.md` § Feedback re-entry,
+  `phases/07-feedback.md`, new `feedback` status, `/feedback` command).
+  "Address the feedback on <work-id>" reopens a delivered item: the
+  worktree comes back on the existing branch
+  (`worktree.sh add --existing`, new flag), MR comments are triaged into
+  `feedback-round-<n>` steps on the implementation plan, gate 2
+  re-reviews the revision, and delivery pushes the same branch and
+  answers the threads instead of opening a new MR. Reopening is always
+  human-initiated — nothing polls MRs.
 - **Intake phase doc** (`workflow/phases/00-intake.md`). Intake's exit is
   now explicit: `## Request` pasted verbatim, draft acceptance criteria,
   and a filled `repos:` before entering context. `validate.sh` warns when
@@ -27,9 +36,9 @@ Every entry answers: **Action needed after pulling?**
   not the local default branch — a lagging local branch used to drag
   unrelated upstream commits into the reviewed diff, which the
   diff-reviewer would then FAIL as unexplained changes.
-- **Action needed after pulling?** No — off by default; delivery keeps
-  waiting for you unless you uncomment `Auto-deliver: on` in
-  `config/preferences.md`.
+- **Action needed after pulling?** No — auto-delivery is off by default
+  (uncomment `Auto-deliver: on` in `config/preferences.md` to enable);
+  the `feedback` status and intake rules only affect items going forward.
 
 ## 2026-08-16
 

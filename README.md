@@ -33,6 +33,8 @@ flowchart LR
     impl_review --> executing --> verifying
     verifying --> delivery_confirm{{"DELIVERY CONFIRM (human, or opt-in auto)"}}
     delivery_confirm --> done
+    done -. "MR feedback (you reopen)" .-> feedback
+    feedback --> executing
 ```
 
 There are three review gates: after the plan, after the implementation
@@ -175,6 +177,11 @@ auto-delivery lands in the task's Activity log.
 
 Other things you can do:
 
+- **Address MR feedback:** say "address the feedback on `<work-id>`" —
+  the delivered item reopens (`feedback` status), its worktree comes back
+  on the same branch, review comments are triaged into plan steps, and
+  the same gates apply on the way back out: same branch, same MR, replies
+  posted on the threads.
 - **Run a runbook:** "run the `<name>` runbook."
 - **Ad-hoc ops:** ask the agent to run a one-off shell or MCP operation.
 - **Ask questions:** the knowledge base can answer "how does repo X work?"

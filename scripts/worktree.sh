@@ -12,7 +12,7 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd -P)
 
 usage() {
   cat <<'EOF'
-Usage: worktree.sh add    <repo-id> <work-id> [--branch <name>]
+Usage: worktree.sh add    <repo-id> <work-id> [--branch <name>] [--existing]
        worktree.sh remove <repo-id> <work-id> [--delete-branch]
        worktree.sh list
 
@@ -20,14 +20,18 @@ add     create worktrees/<repo-id>--<work-id> on a new branch, branched from
         origin/<default_branch> of the registered repo. The branch is named
         <branch_prefix><work-id> — prefix from the repo's 'branch_prefix:'
         registry field, "work/" when unset — unless --branch names it
-        outright.
+        outright. With --existing, resume the branch instead of creating
+        one (feedback re-entry after delivery).
 remove  remove that worktree (and, with --delete-branch, the branch it has
         checked out).
 list    print "<repo-id>  <work-id>  <path>" for every existing worktree.
 
 Options:
-  --branch <name>   add only: exact branch name to create (overrides the
-                    registry prefix; for org-enforced naming schemes)
+  --branch <name>   add only: exact branch name (overrides the registry
+                    prefix; for org-enforced naming schemes)
+  --existing        add only: check out the EXISTING task branch — local,
+                    or tracking origin/<branch> when only the remote has
+                    it — instead of creating a new one
   --delete-branch   remove only: also delete the worktree's branch
   -h, --help        show this help
 
@@ -57,7 +61,7 @@ repo_dir() {
 }
 
 cmd_add() {
-  local repo_id="$1" work_id="$2" branch="$3" dir branch_base worktree prefix
+  local repo_id="$1" work_id="$2" branch="$3" existing="$4" dir branch_base worktree prefix
   check_id "repo-id" "$repo_id"
   check_id "work-id" "$work_id"
   # Checked here, at top level: a die inside the $(repo_dir ...) substitution
@@ -83,8 +87,22 @@ cmd_add() {
     mos_die "fetch failed for '$repo_id' — check the remote and your network"
 
   mkdir -p "$(mos_root)/worktrees"
-  git -C "$dir" worktree add "$worktree" -b "$branch" "origin/$branch_base" ||
-    mos_die "worktree add failed — does origin/$branch_base exist and is branch '$branch' free? (git -C repos/$repo_id branch -D '$branch')"
+  if [ "$existing" = "yes" ]; then
+    # Resume the task branch (feedback re-entry): local branch if present,
+    # else a tracking branch off origin's — never a fresh one.
+    if git -C "$dir" show-ref --verify --quiet "refs/heads/$branch"; then
+      git -C "$dir" worktree add "$worktree" "$branch" ||
+        mos_die "worktree add failed — is branch '$branch' already checked out elsewhere? (git -C repos/$repo_id worktree list)"
+    elif git -C "$dir" show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+      git -C "$dir" worktree add --track -b "$branch" "$worktree" "origin/$branch" ||
+        mos_die "worktree add failed for origin/$branch — check git -C repos/$repo_id worktree list"
+    else
+      mos_die "branch '$branch' exists neither locally nor on origin in repos/$repo_id — nothing to resume; drop --existing to create it fresh"
+    fi
+  else
+    git -C "$dir" worktree add "$worktree" -b "$branch" "origin/$branch_base" ||
+      mos_die "worktree add failed — does origin/$branch_base exist and is branch '$branch' free? (resume it with --existing, or delete it: git -C repos/$repo_id branch -D '$branch')"
+  fi
 
   printf '%s\n' "$worktree"
 }
@@ -148,6 +166,7 @@ case "$subcommand" in
     add_branch=""
     add_repo_id=""
     add_work_id=""
+    add_existing="no"
     while [ $# -gt 0 ]; do
       case "$1" in
         --branch)
@@ -159,6 +178,7 @@ case "$subcommand" in
           add_branch="${1#--branch=}"
           [ -n "$add_branch" ] || mos_usage_error "--branch requires a name"
           ;;
+        --existing) add_existing="yes" ;;
         -*) mos_usage_error "unknown option: $1" ;;
         *)
           if [ -z "$add_repo_id" ]; then
@@ -172,9 +192,9 @@ case "$subcommand" in
       esac
       shift
     done
-    [ -n "$add_repo_id" ] || mos_usage_error "add takes <repo-id> <work-id> [--branch <name>]"
-    [ -n "$add_work_id" ] || mos_usage_error "add takes <repo-id> <work-id> [--branch <name>]"
-    cmd_add "$add_repo_id" "$add_work_id" "$add_branch"
+    [ -n "$add_repo_id" ] || mos_usage_error "add takes <repo-id> <work-id> [--branch <name>] [--existing]"
+    [ -n "$add_work_id" ] || mos_usage_error "add takes <repo-id> <work-id> [--branch <name>] [--existing]"
+    cmd_add "$add_repo_id" "$add_work_id" "$add_branch" "$add_existing"
     ;;
   remove)
     delete_branch="no"

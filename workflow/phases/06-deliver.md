@@ -26,6 +26,12 @@ Verification is complete and everything is green. Status is `delivering`.
      the worktree if unsure: `git symbolic-ref --short HEAD`).
    - Create the MR: GitLab host → `glab mr create` (source branch, target
      `default_branch`, title, description); GitHub host → `gh pr create`.
+   - Reopened items (`feedback` re-entry) skip creation — the MR already
+     exists and the push updated it. Instead post the round's replies on
+     the discussion threads (addressed: what changed; answered: the
+     drafted reply), and append
+     `- YYYY-MM-DD — feedback round <n> delivered` in place of the
+     MR-created Activity line.
    - Record the MR URL in `task.md` `mr:`, and append the gate-3 approval
      record to `## Activity`:
      `- YYYY-MM-DD — delivery approved, MR created: <url>` — or, when
