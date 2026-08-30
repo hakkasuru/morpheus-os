@@ -13,7 +13,11 @@ usage() {
 Usage: sync-repos.sh [--repo <id>]
 
 Clone every repository listed in config/repos.yaml into repos/<id>, or fetch it
-when it is already there. Idempotent; nothing outside repos/ is touched.
+when it is already there, then fast-forward the local 'default_branch:' to
+match origin. Idempotent; nothing outside repos/ is touched. repos/<id> is
+never committed to directly, so the fast-forward can never lose work — if
+that invariant is ever violated (local branch diverged, or a different
+branch checked out), sync fails loud on that repo rather than guessing.
 
 Options:
   --repo <id>   sync only this registry id
@@ -46,8 +50,11 @@ root=$(mos_root)
 registry=$(mos_registry_path)
 
 sync_one() {
-  local id="$1" dest remote
+  local id="$1" dest remote default_branch current
   dest="$root/repos/$id"
+
+  default_branch=$(mos_yaml_repo_field "$id" default_branch || true)
+  [ -n "$default_branch" ] || mos_die "repo '$id' has no 'default_branch:' in $registry"
 
   if [ -d "$dest/.git" ]; then
     git -C "$dest" fetch --prune ||
@@ -63,6 +70,24 @@ sync_one() {
     git clone "$remote" "$dest" ||
       mos_die "clone failed for '$id' from $remote — check the URL and your credentials"
     printf 'sync: %s cloned\n' "$id"
+  fi
+
+  # Fast-forward the local default branch to origin's. repos/<id> is never
+  # committed to directly (see AGENTS.md), so this can never lose work —
+  # unless that invariant has somehow been violated, in which case fail loud
+  # instead of guessing which side to keep.
+  current=$(git -C "$dest" symbolic-ref --quiet --short HEAD || true)
+  if [ "$current" = "$default_branch" ]; then
+    if git -C "$dest" show-ref --verify --quiet "refs/remotes/origin/$default_branch"; then
+      git -C "$dest" merge --ff-only "origin/$default_branch" >/dev/null ||
+        mos_die "repos/$id: local '$default_branch' has diverged from 'origin/$default_branch' — repos/$id should never be committed to directly; fix it manually"
+    else
+      mos_warn "repos/$id: origin has no '$default_branch' branch — check 'default_branch:' in $registry"
+    fi
+  elif [ -n "$current" ]; then
+    mos_warn "repos/$id: checked out branch '$current', not the registered default '$default_branch' — leaving it as-is; repos/$id should never be worked in directly"
+  else
+    mos_warn "repos/$id: HEAD is detached — leaving it as-is; repos/$id should never be worked in directly"
   fi
 
   mos_check_host_cli "$id"
