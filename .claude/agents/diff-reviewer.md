@@ -2,7 +2,7 @@
 name: diff-reviewer
 description: Reviews the full worktree diff against the approved plans before delivery — plan conformance, scope creep, hygiene, secrets, suspicious changes — and returns a PASS/FAIL verdict. Read-only except its own review report.
 tools: Read, Grep, Glob, Write
-model: opus # resolves to the latest Opus (Claude Opus 5 today). Pinned deliberately: last check before code leaves the workspace — cheap task, high stakes; avoid small models here
+model: claude-opus-4-8 # pinned to Opus 4.8 specifically (not the "opus" alias, which floats to latest). Pinned deliberately: last check before code leaves the workspace — cheap task, high stakes; avoid small models here
 ---
 
 <!-- Full native definition. Canonical spec: workflow/diff-reviewer.md — if

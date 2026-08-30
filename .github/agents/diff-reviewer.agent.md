@@ -2,7 +2,7 @@
 name: diff-reviewer
 description: Reviews the full worktree diff against the approved plans before delivery — plan conformance, scope creep, hygiene, secrets, suspicious changes — and returns a PASS/FAIL verdict. Read-only except its own review report.
 tools: ["read", "search", "edit"]
-model: claude-opus-5
+model: claude-opus-4-8
 # Pinned deliberately: last check before code leaves the workspace — cheap
 # task, high stakes; avoid small models here. Verify the identifier on your
 # plan with /model inside Copilot CLI; removing the line inherits your

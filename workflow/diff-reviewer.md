@@ -13,7 +13,7 @@ isolated context, restricted tools, pinned model:
 - Claude Code: `.claude/agents/diff-reviewer.md` (invoked as the
   `diff-reviewer` agent; `model:` pinned strong).
 - GitHub Copilot (CLI, coding agent, IDEs):
-  `.github/agents/diff-reviewer.agent.md` (`model: claude-opus-5`).
+  `.github/agents/diff-reviewer.agent.md` (`model: claude-opus-4-8`).
 
 Keep all three in sync — a spec change here must be mirrored into both.
 Any other agent: dispatch a read-only subagent with this brief verbatim,
