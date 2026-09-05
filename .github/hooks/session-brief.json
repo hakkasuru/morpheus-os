@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": "scripts/session-brief.sh --hook copilot 2>/dev/null || true",
+        "cwd": ".",
+        "timeoutSec": 20
+      }
+    ]
+  }
+}
