@@ -6,6 +6,24 @@ pulling (`git pull upstream main`). Machinery details live in `git log`.
 
 Every entry answers: **Action needed after pulling?**
 
+## 2026-09-05
+
+- **Session-start brief** (`scripts/session-brief.sh`, new
+  `.claude/settings.json` and `.github/hooks/session-brief.json`). Every
+  session start and resume in this workspace — Claude Code and Copilot
+  CLI — now runs a read-only brief and hands it to the agent to relay:
+  open work items (gates waiting on you, blocked, in progress, backlog),
+  knowledge docs due for maintenance (past `stale_after`, drafts older
+  than 30 days, agent-authored docs with no `verified:` stamp) and an
+  ordered priority list — or an explicit "nothing to pick up". Both hooks
+  are project-scoped and checked in; nothing is written to `~/.claude` or
+  `~/.copilot`. The script is client-agnostic: run it by hand, or wire its
+  plain-text output into another agent's session-start mechanism.
+- **Action needed after pulling?** Claude Code only picks up a new
+  project settings file on the next start — restart the session (or open
+  `/hooks` once) after pulling. Copilot CLI loads `.github/hooks/` on
+  start as well.
+
 ## 2026-08-30
 
 - **Opt-in auto-delivery (gate 3)** (`WORKFLOW.md` § Review gates,

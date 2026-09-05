@@ -209,6 +209,18 @@ section for future reference.
 by state (flagging gates waiting on you and blocked items), worktrees
 (flagging orphans), repo clone state, and validation warnings.
 
+**What should I pick up?** `scripts/session-brief.sh` — a shorter,
+read-only brief: open work items (gates waiting on you, blocked, in
+progress, backlog), knowledge docs due for maintenance (past
+`stale_after`, drafts older than 30 days, agent-authored docs never
+human-verified) and an ordered priority list — or a plain "nothing to
+pick up". It runs automatically at every session start and resume through
+project-scoped hooks — `.claude/settings.json` for Claude Code and
+`.github/hooks/session-brief.json` for Copilot CLI — so nothing is
+installed at user level. `--hook claude` / `--hook copilot` emit each
+client's session-start JSON; other agents can wire the plain-text output
+into their own session-start mechanism.
+
 **Housekeeping:** run `scripts/status.sh` periodically (it subsumes
 `worktree.sh list` and the validation sweep), and keep
 `config/preferences.md` current as your conventions change.
