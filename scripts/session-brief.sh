@@ -2,10 +2,11 @@
 # session-brief.sh — read-only "what should I pick up?" brief, meant to run
 # at agent session start (wired as a Claude Code SessionStart hook in
 # .claude/settings.json and a Copilot CLI sessionStart hook in
-# .github/hooks/session-brief.json). Reports open work items, knowledge docs that need
-# maintenance (past stale_after, long-lived drafts, agent-authored docs not
-# yet human-verified) and an ordered priority list — or says plainly that
-# there is nothing to pick up. Never writes anything.
+# .github/hooks/session-brief.json). Reports open work items (with the live MR state of
+# anything awaiting merge or in feedback, via mr-check.sh), knowledge docs
+# that need maintenance (past stale_after, long-lived drafts, agent-authored
+# docs not yet human-verified) and an ordered priority list — or says
+# plainly that there is nothing to pick up. Never writes anything.
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd -P)
@@ -15,14 +16,19 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd -P)
 
 usage() {
   cat <<'EOF'
-Usage: session-brief.sh [--hook [claude|copilot]]
+Usage: session-brief.sh [--no-mr-check] [--hook [claude|copilot]]
 
 Print a short session-start brief: open work items (flagging gates waiting
-on you and blocked items), knowledge docs due for maintenance or review,
-and an ordered list of priorities. States explicitly when there is nothing
-to pick up.
+on you, blocked items, and the live MR state of items awaiting merge or in
+feedback), knowledge docs due for maintenance or review, and an ordered
+list of priorities. States explicitly when there is nothing to pick up.
+
+The MR state comes from scripts/mr-check.sh (read-only glab/gh queries, a
+few seconds per MR). It is skipped with --no-mr-check or when the
+environment has MOS_BRIEF_NO_MR_CHECK set; the brief then says so.
 
 Options:
+  --no-mr-check    do not query MR/PR state (offline, or in a hurry)
   --hook [client]  emit the brief as session-start hook JSON for the given
                    client instead of plain text:
                      claude   Claude Code SessionStart
@@ -36,6 +42,12 @@ EOF
 
 mode=text
 client=claude
+mr_check=yes
+[ -z "${MOS_BRIEF_NO_MR_CHECK:-}" ] || mr_check=no
+if [ "${1:-}" = --no-mr-check ]; then
+  mr_check=no
+  shift
+fi
 case "${1:-}" in
   '') : ;;
   --hook)
@@ -63,6 +75,7 @@ cutoff30=$(mos_days_ago_iso 30 || true)
 # plain string appends so the script stays bash 3.2 compatible (no arrays
 # of arrays, no associative arrays).
 waiting=""    # gates on the human's desk
+awaiting=""   # delivered, MR open — waiting on merge or review
 blocked=""    # items with status blocked
 active=""     # active items the agent can resume on its own
 backlog=""    # items not started yet
@@ -84,6 +97,37 @@ count() {
   else
     printf '%s\n' "$1" | grep -c .
   fi
+}
+
+# --- Pending MR state -------------------------------------------------------
+# One porcelain line per MR: <id> <status> <verdict> <url> <detail>; the
+# counters below count distinct work items, not MRs. Only
+# items that are awaiting-merge or in feedback are queried; when there are
+# none this costs no network call at all.
+mr_lines=""
+mr_note=""
+n_merged=0
+n_attention=0
+n_mr_closed=0
+if [ "$mr_check" = yes ]; then
+  mr_lines=$("$SCRIPT_DIR/mr-check.sh" --porcelain 2>/dev/null || true)
+  n_merged=$(printf '%s\n' "$mr_lines" | awk -F'\t' '$3 == "merged" { print $1 }' | sort -u | grep -c . || true)
+  n_attention=$(printf '%s\n' "$mr_lines" | awk -F'\t' '$3 == "attention" { print $1 }' | sort -u | grep -c . || true)
+  n_mr_closed=$(printf '%s\n' "$mr_lines" | awk -F'\t' '$3 == "closed" { print $1 }' | sort -u | grep -c . || true)
+else
+  mr_note="(MR state not checked — run scripts/mr-check.sh)"
+fi
+
+# mr_state <work-id> — "verdict: detail" for that item's MR(s), or the
+# not-checked note; empty when the item has no pending MR.
+mr_state() {
+  local id="$1" out
+  if [ "$mr_check" != yes ]; then
+    printf '%s\n' "$mr_note"
+    return 0
+  fi
+  out=$(printf '%s\n' "$mr_lines" | awk -F'\t' -v id="$id" '$1 == id { printf "%s%s%s", (n++ ? "; " : ""), ($3 == "error" ? "could not check: " : ""), $5 }')
+  printf '%s\n' "$out"
 }
 
 # --- Work items -------------------------------------------------------------
@@ -112,6 +156,14 @@ for state in active backlog; do
         ;;
       delivering)
         append waiting "$line — confirm delivery (push + MR/PR)"
+        ;;
+      awaiting-merge)
+        mr=$(mr_state "$id")
+        append awaiting "$line${mr:+ — MR $mr}"
+        ;;
+      feedback)
+        mr=$(mr_state "$id")
+        append active "$line — addressing MR feedback${mr:+ (MR $mr)}"
         ;;
       blocked)
         # Activity-log convention (WORKFLOW.md § States):
@@ -174,13 +226,14 @@ fi
 
 # --- Render -----------------------------------------------------------------
 n_waiting=$(count "$waiting")
+n_awaiting=$(count "$awaiting")
 n_blocked=$(count "$blocked")
 n_active=$(count "$active")
 n_backlog=$(count "$backlog")
 n_stale=$(count "$kb_stale")
 n_drafts=$(count "$kb_drafts")
 n_unverified=$(count "$kb_unverified")
-n_open=$((n_waiting + n_blocked + n_active + n_backlog))
+n_open=$((n_waiting + n_awaiting + n_blocked + n_active + n_backlog))
 n_kb=$((n_stale + n_drafts + n_unverified))
 
 section() {
@@ -200,6 +253,7 @@ brief=$(
       printf '  (none)\n'
     else
       [ -n "$waiting" ] && section "Waiting on you:" "$waiting"
+      [ -n "$awaiting" ] && section "Awaiting merge:" "$awaiting"
       [ -n "$blocked" ] && section "Blocked:" "$blocked"
       [ -n "$active" ] && section "In progress:" "$active"
       [ -n "$backlog" ] && section "Backlog:" "$backlog"
@@ -217,11 +271,15 @@ brief=$(
     printf '\n== Priorities ==\n'
     n=0
     if [ "$n_waiting" -gt 0 ]; then n=$((n + 1)); printf '  %s. Clear the %s gate(s) waiting on you.\n' "$n" "$n_waiting"; fi
+    if [ "$n_merged" -gt 0 ]; then n=$((n + 1)); printf '  %s. Close the %s merged item(s) ("close <work-id>", phases/08-close.md).\n' "$n" "$n_merged"; fi
+    if [ "$n_mr_closed" -gt 0 ]; then n=$((n + 1)); printf '  %s. Decide on the %s MR(s) closed without merging: cancel the item or reopen it.\n' "$n" "$n_mr_closed"; fi
+    if [ "$n_attention" -gt 0 ]; then n=$((n + 1)); printf '  %s. Look at the %s MR(s) with requested changes or unresolved threads ("address the feedback on <work-id>").\n' "$n" "$n_attention"; fi
     if [ "$n_blocked" -gt 0 ]; then n=$((n + 1)); printf '  %s. Unblock the %s blocked item(s).\n' "$n" "$n_blocked"; fi
     if [ "$n_active" -gt 0 ]; then n=$((n + 1)); printf '  %s. Resume the %s item(s) in progress.\n' "$n" "$n_active"; fi
     if [ "$n_stale" -gt 0 ]; then n=$((n + 1)); printf '  %s. Re-verify the %s stale knowledge doc(s) (kb-review runbook).\n' "$n" "$n_stale"; fi
     if [ "$n_drafts" -gt 0 ]; then n=$((n + 1)); printf '  %s. Finish or promote the %s old draft(s).\n' "$n" "$n_drafts"; fi
     if [ "$n_backlog" -gt 0 ]; then n=$((n + 1)); printf '  %s. Pick up the next backlog item (%s waiting).\n' "$n" "$n_backlog"; fi
+    if [ "$n_awaiting" -gt 0 ] && [ "$mr_check" != yes ]; then n=$((n + 1)); printf '  %s. Check the %s pending MR(s): scripts/mr-check.sh.\n' "$n" "$n_awaiting"; fi
     if [ "$n_unverified" -gt 0 ]; then n=$((n + 1)); printf '  %s. Review the %s agent-authored doc(s) and stamp verified:.\n' "$n" "$n_unverified"; fi
   fi
 
@@ -236,7 +294,7 @@ fi
 # --hook: session-start hook JSON. Escaped here rather than with jq so the
 # hook has no dependency beyond bash + awk. Claude Code nests the context
 # under hookSpecificOutput; Copilot CLI reads a top-level additionalContext.
-preamble='Morpheus OS session brief (scripts/session-brief.sh, read-only). In your first reply, relay this brief to the human as-is — open work, knowledge-base maintenance due, and the priority list, or the fact that there is nothing to pick up — then continue with whatever they asked.'
+preamble='Morpheus OS session brief (scripts/session-brief.sh, read-only). In your first reply, relay this brief to the human as-is — open work (including the live MR state of anything awaiting merge), knowledge-base maintenance due, and the priority list, or the fact that there is nothing to pick up — then continue with whatever they asked. Never close or reopen a work item from this brief alone: a merged MR is closed via phases/08-close.md and MR feedback is addressed via phases/07-feedback.md, each only when the human explicitly asks.'
 escaped=$(printf '%s\n\n%s\n' "$preamble" "$brief" | awk '
 BEGIN { ORS = "" }
 {
