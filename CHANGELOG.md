@@ -6,6 +6,42 @@ pulling (`git pull upstream main`). Machinery details live in `git log`.
 
 Every entry answers: **Action needed after pulling?**
 
+## 2026-09-14
+
+- **Done means merged** (`WORKFLOW.md` § States, § Closing on merge, new
+  `awaiting-merge` status, `phases/06-deliver.md`, new
+  `phases/08-close.md`, `/close` command). Delivery no longer closes a
+  work item: creating the MR/PR removes the worktrees and parks the item
+  in `awaiting-merge` under `work/active/`. It moves to `done` only after
+  the MR is merged — you say so ("close <work-id>"), the agent confirms
+  the merge on the host, deletes the local task branch and moves the
+  folder to `work/done/`. An MR closed without merging is your call:
+  cancel the item or rework it.
+- **Feedback before merge, from reviewers or from you** (`WORKFLOW.md`
+  § Feedback, `phases/07-feedback.md`). The `feedback` state is now
+  entered from `awaiting-merge` (not from `done`), and for two reasons: MR
+  comments, or you wanting something changed before the merge. Your own
+  scope changes are recorded as `## Amendments` in `02-plan.md` and go
+  straight to the implementation plan (gate 2) — no gate-1 re-review of a
+  decision you already made. Merged items are never reopened; further
+  changes become new work items.
+- **Pending-MR check** (new `scripts/mr-check.sh`, `/mr-check` command,
+  `scripts/session-brief.sh`). One read-only line per pending MR — merged,
+  open, attention (changes requested / unresolved threads), closed without
+  merge, or error — via `glab`/`gh`. The session brief runs it at every
+  session start and folds the verdicts into the open-work list and the
+  priorities ("close the N merged item(s)", "look at the N MR(s) with
+  requested changes"). It never acts: closing and reopening stay on your
+  explicit ask. Skip it with `session-brief.sh --no-mr-check` or
+  `MOS_BRIEF_NO_MR_CHECK=1`.
+- **Action needed after pulling?** Two things. (1) The session-start hook
+  timeout went from 20s to 45s to leave room for the MR queries
+  (`.claude/settings.json`, `.github/hooks/session-brief.json`) — restart
+  the session (or open `/hooks` once) so Claude Code picks it up. (2) Any
+  item you delivered before this change already sits in `work/done/` as
+  `done`; leave it. Items delivered from now on wait in `awaiting-merge`
+  until you close them.
+
 ## 2026-09-05
 
 - **Session-start brief** (`scripts/session-brief.sh`, new

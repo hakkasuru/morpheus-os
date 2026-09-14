@@ -32,8 +32,9 @@ flowchart LR
     impl_planning --> impl_review{{"IMPL REVIEW (human or auto)"}}
     impl_review --> executing --> verifying
     verifying --> delivery_confirm{{"DELIVERY CONFIRM (human, or opt-in auto)"}}
-    delivery_confirm --> done
-    done -. "MR feedback (you reopen)" .-> feedback
+    delivery_confirm --> awaiting_merge["awaiting-merge"]
+    awaiting_merge -- "MR merged (you confirm)" --> done
+    awaiting_merge -. "MR comments, or you want a change (you reopen)" .-> feedback
     feedback --> executing
 ```
 
@@ -156,8 +157,9 @@ scripts/new-work.sh task|story|epic "<title>"
 | impl-review | Same subagent review as plan-review, against the implementation plan. | **Approve or revise the implementation plan** — same optional auto-approval. |
 | executing | Agent delegates implementation to subagents in worktrees. | — |
 | verifying | Agent runs verification commands. | — |
-| delivering | — | **Confirm before push / MR / PR** — unless you've enabled `Auto-deliver` and the run is fully green (verification + diff review PASS). |
-| done | Work item is closed out and learnings are harvested to the KB. | — |
+| delivering | Learnings are harvested to the KB; worktrees are removed. | **Confirm before push / MR / PR** — unless you've enabled `Auto-deliver` and the run is fully green (verification + diff review PASS). |
+| awaiting-merge | The MR/PR is open. The session brief reports its live state (merged, comments, changes requested); `scripts/mr-check.sh` does the same on demand. | **Say when to close** ("close `<work-id>`") once it's merged, or reopen it (`feedback`) if reviewers or you want changes. |
+| done | The MR is merged and the work item is closed. | — |
 
 Review gates 1–2 can approve automatically: set an auto-approve threshold in
 `config/preferences.md` (off by default) and plans whose review confidence
@@ -177,11 +179,20 @@ auto-delivery lands in the task's Activity log.
 
 Other things you can do:
 
-- **Address MR feedback:** say "address the feedback on `<work-id>`" —
-  the delivered item reopens (`feedback` status), its worktree comes back
-  on the same branch, review comments are triaged into plan steps, and
-  the same gates apply on the way back out: same branch, same MR, replies
-  posted on the threads.
+- **Check your MRs:** say "check MRs" (or `/mr-check`) — every item
+  awaiting merge is looked up on its host and reported as merged, open,
+  needing attention, or closed without merge. The session brief does this
+  automatically at start; pass `--no-mr-check` to skip it when offline.
+- **Address MR feedback, or change your mind:** say "address the feedback
+  on `<work-id>`" or "on `<work-id>`, also change X" — the item awaiting
+  merge reopens (`feedback` status), its worktree comes back on the same
+  branch, review comments and your request are triaged into plan steps,
+  and the same gates apply on the way back out: same branch, same MR,
+  replies posted on the threads. Only items not yet merged can be
+  reopened; after the merge, new changes are a new work item.
+- **Close on merge:** say "`<work-id>` was merged" or `/close <work-id>` —
+  the agent confirms the merge on the host, deletes the local task branch,
+  and moves the item to `work/done/`.
 - **Run a runbook:** "run the `<name>` runbook."
 - **Ad-hoc ops:** ask the agent to run a one-off shell or MCP operation.
 - **Ask questions:** the knowledge base can answer "how does repo X work?"
