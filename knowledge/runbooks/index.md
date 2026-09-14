@@ -1,6 +1,7 @@
 # Runbooks
 
-* [Workspace setup](/knowledge/runbooks/workspace-setup.md) - first-time setup of a freshly cloned workspace.
+* [Workspace setup](/knowledge/runbooks/workspace-setup.md) - first-time setup of a freshly cloned workspace (remotes, repos, preferences).
+* [Update harness](/knowledge/runbooks/update-harness.md) - pull the latest template machinery from `upstream`, apply changelog action items, verify, push to `origin`.
 * [Add repo](/knowledge/runbooks/add-repo.md) - register, clone, and seed the knowledge base for a new repo.
 * [KB review](/knowledge/runbooks/kb-review.md) - periodic knowledge-base maintenance sweep.
 * [KB migrate](/knowledge/runbooks/kb-migrate.md) - adopt a newer OKF spec version across templates, validation, rules, and all docs.
