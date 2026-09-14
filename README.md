@@ -49,34 +49,27 @@ default, with its own opt-in (`Auto-deliver`) for fully green runs.
 ### Make it yours
 
 This repo is a **template** — don't work inside a clone that still points
-at the public repo. Fork it (GitHub's **"Use this template"** button) or
-make your own copy, and set it **private** if your repo registry or
-knowledge base shouldn't be public:
+at the public repo. Clone it, keep the template as a push-disabled
+`upstream` for updates, and make your own (ideally **private**) repo the
+`origin` — your registry, preferences and knowledge base must never land
+on the public template:
 
 ```
 git clone <public-template-url> my-workspace
 cd my-workspace
-git remote set-url origin <your-private-repo-url>
+git remote rename origin upstream
+git remote set-url --push upstream DISABLED
+git remote add origin <your-private-repo-url>
 git push -u origin main
 ```
 
-Optional: keep the public template as an update channel via a second
-remote:
-
-```
-git remote add upstream <public-template-url>
-git pull upstream main
-```
-
-**Recommended: never push to the template origin.** Your workspace
-(registry, preferences, knowledge base) must not land on the public
-template repo. Re-point `origin` to your own repo *before* your first
-push (as shown above), and if you keep the template as `upstream`,
-disable pushes to it so an accidental `git push upstream` can't happen:
-
-```
-git remote set-url --push upstream DISABLED
-```
+The `workspace-setup` runbook does exactly this as its remotes step (say
+"run the workspace-setup runbook" or `/setup` in a fresh clone), and the
+`update-harness` runbook pulls later template changes in
+(`/update-harness`): fetch `upstream`, show the incoming changelog
+entries, merge on your confirmation, apply the action items, validate,
+push to `origin`. With the push URL `DISABLED`, an accidental
+`git push upstream` cannot happen.
 
 This stays low-conflict because personal layers (`config/`, `work/`,
 `knowledge/`) rarely touch harness machinery (`scripts/`, `workflow/`,

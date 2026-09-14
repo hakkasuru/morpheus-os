@@ -8,6 +8,15 @@ Every entry answers: **Action needed after pulling?**
 
 ## 2026-09-14
 
+- **Update-harness runbook and template-safe remotes**
+  (`knowledge/runbooks/update-harness.md`, `/update-harness` command,
+  `workspace-setup` runbook step 2, README "Make it yours"). "Update the
+  harness" now has a runbook: fetch `upstream`, show the incoming
+  `CHANGELOG.md` entries and commits, merge on your confirmation, apply
+  each entry's action items, validate, push to `origin`. Workspace setup
+  gained a remotes step: a clone whose `origin` is still the public
+  template gets it renamed to `upstream` with pushes `DISABLED`, and your
+  own repo added as `origin`.
 - **Done means merged** (`WORKFLOW.md` § States, § Closing on merge, new
   `awaiting-merge` status, `phases/06-deliver.md`, new
   `phases/08-close.md`, `/close` command). Delivery no longer closes a
@@ -34,7 +43,10 @@ Every entry answers: **Action needed after pulling?**
   requested changes"). It never acts: closing and reopening stay on your
   explicit ask. Skip it with `session-brief.sh --no-mr-check` or
   `MOS_BRIEF_NO_MR_CHECK=1`.
-- **Action needed after pulling?** Two things. (1) The session-start hook
+- **Action needed after pulling?** Three things. (0) If your clone has no
+  `upstream` remote yet, or `upstream` still accepts pushes, run the
+  `workspace-setup` runbook's step 2 once (`git remote -v` shows the
+  state). (1) The session-start hook
   timeout went from 20s to 45s to leave room for the MR queries
   (`.claude/settings.json`, `.github/hooks/session-brief.json`) — restart
   the session (or open `/hooks` once) so Claude Code picks it up. (2) Any
