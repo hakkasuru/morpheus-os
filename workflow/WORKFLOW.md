@@ -9,13 +9,20 @@ Pipeline (linear progression, left to right):
 
 ```
 intake → context → planning → plan-review → impl-planning → impl-review
-  → executing → verifying → delivering → done
+  → executing → verifying → delivering → awaiting-merge → done
 ```
 
-Re-entry state: `feedback` — a delivered (`done`) item whose MR drew
-feedback needing code changes re-enters the pipeline at `feedback` and
-flows `feedback → executing → verifying → delivering → done` again.
-Entered only on the human's explicit ask — see § Feedback re-entry.
+`awaiting-merge` — delivered, not done: the MR/PR exists and is open. The
+item stays under `work/active/` with no worktrees (the branch and the MR
+carry the work) until the MR is merged — see § Closing on merge. `done`
+means merged.
+
+Re-entry state: `feedback` — an `awaiting-merge` item re-enters the
+pipeline at `feedback` when its MR drew comments needing attention OR the
+human wants something changed before merge, and flows
+`feedback → executing → verifying → delivering → awaiting-merge` again.
+Entered only on the human's explicit ask — see § Feedback. A merged item
+(`done`) has no re-entry: further changes are new work items.
 
 Exception states (not on the pipeline):
 
@@ -33,7 +40,7 @@ items only (standalone tasks/stories, and epics themselves):
 | Folder           | Legal status                          |
 |------------------|----------------------------------------|
 | `work/backlog/`  | `intake`                                |
-| `work/active/`   | any pipeline status between `context` and `delivering`, `feedback`, or `blocked` |
+| `work/active/`   | any pipeline status between `context` and `awaiting-merge`, `feedback`, or `blocked` |
 | `work/done/`      | `done`, `cancelled`                     |
 
 Moving the folder and updating `status:` are one atomic edit — never do one
@@ -144,7 +151,8 @@ Record the outcome via `mr:` in task.md plus an Activity line:
 | impl-review     | `03-implementation-plan-review.md` (subagent) | approved (human or auto)      | executing       |
 | executing       | (commits in worktrees)           | all impl-plan steps done                  | verifying       |
 | verifying       | `04-verification.md`             | complete, all gates pass                  | delivering      |
-| delivering      | MR(s)                             | created, folder moved to `work/done/`     | done            |
+| delivering      | MR(s)                             | created, `mr:` recorded, worktrees removed | awaiting-merge  |
+| awaiting-merge  | —                                 | MR merged (host CLI confirms) and the human asks to close — `phases/08-close.md`; folder moved to `work/done/` | done            |
 | feedback        | `03-implementation-plan.md` addendum (`feedback-round-<n>` steps) | feedback triaged, addendum approved at gate 2 | executing       |
 
 ## Epic flow
@@ -161,24 +169,60 @@ the epic's own `status:` reflects the furthest-behind child. The epic's
 folder moves to `work/done/` only once every child is `done` or `cancelled` —
 per § States, that move carries the whole epic subtree, children included.
 
-## Feedback re-entry (after delivery)
+## Pending MRs
 
-When a delivered item's MR draws feedback that needs code changes, the
-human asks to address it ("address the feedback on <work-id>") — the
-orchestrator never polls MRs and never reopens items on its own. The
-reopen is one atomic edit: move the folder `work/done/` → `work/active/`
-(an epic child stays in place, as always), set `status: feedback`, append
-`- YYYY-MM-DD — reopened: MR feedback (round <n>)`.
+`scripts/mr-check.sh` reads the live state of every MR recorded in `mr:`
+on an `awaiting-merge` or `feedback` item and reports one verdict per MR:
+`merged`, `attention` (changes requested / unresolved threads), `open`,
+`closed` (without merging) or `error`. The session brief runs it at every
+session start; the human can also ask for it any time ("check MRs",
+`/mr-check`). It is read-only and it decides nothing: the orchestrator
+never closes, cancels or reopens an item because of what it reports — it
+relays the verdicts and waits for the human's ask (§ Closing on merge,
+§ Feedback).
+
+## Feedback (before merge)
+
+An `awaiting-merge` item enters `feedback` on the human's explicit ask,
+for either of two reasons:
+
+- **MR feedback** — reviewers left comments or requested changes
+  ("address the feedback on <work-id>").
+- **Human change request** — the human wants something changed or added
+  before the MR merges ("on <work-id>, also change X").
+
+The orchestrator never reopens an item on its own, whatever `mr-check.sh`
+reports. The reopen is one atomic edit: set `status: feedback` (the folder
+stays under `work/active/`), append
+`- YYYY-MM-DD — reopened: <MR feedback | change request> (round <n>)`.
 
 Then follow `phases/07-feedback.md`: recreate worktrees on the existing
 task branches (`scripts/worktree.sh add <repo-id> <work-id> --existing`),
-triage the MR discussion, append the needed steps to
-`03-implementation-plan.md` tagged `feedback-round-<n>`, and re-run gate 2
-on the revision (auto-approval and the loop policy apply as at any gate-2
-visit). From there the normal pipeline applies — executing, verifying,
-delivering — except delivery pushes the existing branch and answers the
-discussion threads instead of creating a new MR (gate 3 / Auto-deliver
-applies as usual).
+triage the MR discussion and/or the human's request, append the needed
+steps to `03-implementation-plan.md` tagged `feedback-round-<n>`, and
+re-run gate 2 on the revision (auto-approval and the loop policy apply as
+at any gate-2 visit). From there the normal pipeline applies — executing,
+verifying, delivering — except delivery pushes the existing branch and
+answers the discussion threads instead of creating a new MR (gate 3 /
+Auto-deliver applies as usual), and lands back in `awaiting-merge`.
+
+## Closing on merge
+
+An item closes only when its MR is merged. Two ways the orchestrator
+learns that, both ending in the human's ask:
+
+- the human says so ("<work-id> was merged" / "close <work-id>");
+- `mr-check.sh` — at session start or on demand — reports `merged`, the
+  orchestrator relays it, and the human says to close.
+
+Then follow `phases/08-close.md`: confirm the merge via the host CLI
+(`glab mr view` / `gh pr view`) before closing — the human's word plus a
+CLI confirmation, never one alone unless the CLI is unavailable and the
+human confirms that explicitly; delete the merged local task branch; set
+`status: done`, append `- YYYY-MM-DD — MR merged, closed`, and move the
+folder to `work/done/` (epic children stay in place; the epic moves when
+all children are `done`|`cancelled`). An MR closed WITHOUT merging is the
+human's call: `cancelled`, or `feedback` to rework and reopen the MR.
 
 ## Activity discipline
 
@@ -198,7 +242,12 @@ On every status change, append one line to `task.md`/`epic.md` `## Activity`:
 - Gate loops are bounded: autonomous revise-and-re-review rounds follow
   the § Review gates loop policy — when a stop condition fires, present
   to the human. Never keep revising to chase a threshold.
-- Never advance `status:` without its exit condition met.
+- Never advance `status:` without its exit condition met. In particular,
+  never set `status: done` before the MR is merged — delivery ends in
+  `awaiting-merge`, not `done`.
+- MR state is read, never acted on: `scripts/mr-check.sh` (run by the
+  session brief and on request) only reports. Closing (§ Closing on
+  merge) and reopening (§ Feedback) happen on the human's explicit ask.
 - Blocked beats guessing — if information is missing or a check fails, set
   `status: blocked` and ask; never improvise past it.
 - Update the doc's `updated:` field on every edit, not just on phase change.

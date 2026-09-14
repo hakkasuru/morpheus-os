@@ -38,8 +38,8 @@ case "${1:-}" in
 esac
 [ $# -le 1 ] || mos_usage_error "validate.sh takes no arguments"
 
-# The thirteen legal work-item statuses — see workflow/WORKFLOW.md.
-STATUSES="intake context planning plan-review impl-planning impl-review executing verifying delivering feedback done blocked cancelled"
+# The fourteen legal work-item statuses — see workflow/WORKFLOW.md.
+STATUSES="intake context planning plan-review impl-planning impl-review executing verifying delivering awaiting-merge feedback done blocked cancelled"
 WORK_TYPES="task story epic"
 KB_TYPES="Note Decision Runbook Reference"
 # The three legal knowledge-doc statuses — see knowledge/decisions/adopt-okf-lite-kb.md.
@@ -172,7 +172,7 @@ validate_work_doc() {
         ;;
       work/active/*)
         if in_set "$status" "done cancelled intake"; then
-          v_warn "$where: status '$status' under work/active/ — expected a phase between context and delivering"
+          v_warn "$where: status '$status' under work/active/ — expected a phase between context and awaiting-merge (or feedback/blocked)"
         fi
         ;;
     esac
@@ -206,8 +206,8 @@ validate_work_doc() {
   fi
 
   check
-  if [ -f "$folder/04-verification.md" ] && ! in_set "$status" "executing verifying delivering feedback done"; then
-    v_error "$where: 04-verification.md exists while status is '$status' — it may only exist while executing, verifying, delivering, feedback or done"
+  if [ -f "$folder/04-verification.md" ] && ! in_set "$status" "executing verifying delivering awaiting-merge feedback done"; then
+    v_error "$where: 04-verification.md exists while status is '$status' — it may only exist while executing, verifying, delivering, awaiting-merge, feedback or done"
   fi
 
   # An empty repos: past intake means phase 01 silently skips the KB read

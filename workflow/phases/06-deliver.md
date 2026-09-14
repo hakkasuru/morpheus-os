@@ -29,7 +29,8 @@ Verification is complete and everything is green. Status is `delivering`.
    - Reopened items (`feedback` re-entry) skip creation — the MR already
      exists and the push updated it. Instead post the round's replies on
      the discussion threads (addressed: what changed; answered: the
-     drafted reply), and append
+     drafted reply; a human change request needs no thread reply unless
+     the human asked for one), and append
      `- YYYY-MM-DD — feedback round <n> delivered` in place of the
      MR-created Activity line.
    - Record the MR URL in `task.md` `mr:`, and append the gate-3 approval
@@ -43,24 +44,22 @@ Verification is complete and everything is green. Status is `delivering`.
    - Check every doc in `knowledge/repos/<affected-repo>/` against the
      delivered diff — update or deprecate any claim the diff invalidates.
    - Update the affected `index.md` files.
-5. Close out: `task.md`/`epic.md` `status: done`, append the `## Activity`
-   line, and `scripts/worktree.sh remove <repo-id> <work-id>` for each
-   affected repo. How the folder moves depends on what kind of work item this
-   is (per `workflow/WORKFLOW.md` § States):
-   - Top-level item (standalone task/story, or an epic): move its folder to
-     `work/done/`.
-   - Epic CHILD (a story/task nested under `work/<state>/E-.../`): do NOT
-     move its folder — it stays inside the epic for its whole lifecycle.
-     Only update its `status:`/`## Activity`, then check off its line in the
-     epic's own `epic.md` `## Stories` checklist. Once every child is
-     `done`|`cancelled`, move the EPIC's own folder to `work/done/` (this
-     carries the whole subtree, children included).
+5. Hand over to the MR: `scripts/worktree.sh remove <repo-id> <work-id>`
+   for each affected repo (the task branch stays — the MR points at it and
+   a feedback round resumes it with `--existing`), then set `task.md`
+   `status: awaiting-merge` and append
+   `- YYYY-MM-DD — awaiting merge` to `## Activity`. The folder does NOT
+   move: the item is delivered, not done. It closes in
+   `phases/08-close.md` once the MR is merged, or re-enters via
+   `phases/07-feedback.md` if the MR draws comments or the human wants a
+   change first. Tell the human the MR URL(s) and that the item now waits
+   on the merge.
 
 ## Exit
 
-`status: done`, no worktrees remaining for this work item. Folder under
-`work/done/` for a top-level item or a fully-closed epic; an epic child stays
-in place inside its epic's folder.
+`status: awaiting-merge`, `mr:` recorded, no worktrees remaining for this
+work item, folder still under `work/active/`. Never `done` here — that
+requires the merge (`phases/08-close.md`).
 
 ## Hard rules
 
@@ -70,3 +69,5 @@ in place inside its epic's folder.
   from the plan-review or impl-review gates do not carry forward.
 - Never skip the KB harvest, even for a small task.
 - Leave no orphaned worktrees.
+- Never close the item in this phase: delivered is `awaiting-merge`, not
+  `done`.

@@ -13,8 +13,9 @@ usage() {
 Usage: status.sh
 
 Print a read-only snapshot of the workspace: work items by state (flagging
-gates waiting on you and blocked items), active worktrees (flagging
-orphans), repo clone state, and validate.sh warnings.
+gates waiting on you, items awaiting merge and blocked items), active
+worktrees (flagging orphans), repo clone state, and validate.sh warnings.
+MR state itself is not queried here — run scripts/mr-check.sh for that.
 
 Options:
   -h, --help   show this help
@@ -56,6 +57,7 @@ for state in backlog active "done"; do
         [ "$gate_state" = "in-review" ] && flag="  <-- WAITING ON YOU (approve/revise)"
         ;;
       delivering) flag="  <-- WAITING ON YOU (confirm delivery)" ;;
+      awaiting-merge) flag="  <-- AWAITING MERGE (state: scripts/mr-check.sh)" ;;
       blocked)
         unblock=$(grep -E -- '- [0-9]{4}-[0-9]{2}-[0-9]{2} — blocked ' "$doc" 2>/dev/null | tail -1 || true)
         flag="  <-- BLOCKED${unblock:+: ${unblock#*— }}"
