@@ -489,9 +489,14 @@ run_harness_checks() {
     bash -n "$f" 2>/dev/null || v_error "$(rel "$f"): bash -n failed"
   done
 
+  # Warning severity and above only: info-level heuristics (e.g. SC2015 on
+  # "cmd || true") differ between shellcheck versions, and whatever version
+  # happens to be on PATH (a CI runner image, a distro package) must not
+  # fail the self-check for that. Info-level cleanliness is gated by the
+  # pinned container run (README / CI workflow), not here.
   if command -v shellcheck >/dev/null 2>&1; then
     check
-    shellcheck "$src"/scripts/*.sh || v_error "shellcheck reported findings"
+    shellcheck --severity=warning "$src"/scripts/*.sh || v_error "shellcheck reported findings (warning severity or above)"
   else
     printf 'shellcheck: skipped (not installed)\n'
   fi
