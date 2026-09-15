@@ -1,0 +1,8 @@
+{
+  "session_id": "smoke-session-0001",
+  "transcript_path": "__PARENT__",
+  "hook_event_name": "SubagentStop",
+  "agent_id": "agent-smoke-01",
+  "agent_transcript_path": "__TRANSCRIPT__",
+  "stop_hook_active": false
+}
