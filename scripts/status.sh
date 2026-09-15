@@ -14,8 +14,10 @@ Usage: status.sh
 
 Print a read-only snapshot of the workspace: work items by state (flagging
 gates waiting on you, items awaiting merge and blocked items), active
-worktrees (flagging orphans), repo clone state, and validate.sh warnings.
-MR state itself is not queried here — run scripts/mr-check.sh for that.
+worktrees (flagging orphans), repo clone state, a one-line scorecard
+summary (items on the current harness version, items with gate gaps), and
+validate.sh warnings. MR state itself is not queried here — run
+scripts/mr-check.sh for that.
 
 Options:
   -h, --help   show this help
@@ -95,6 +97,23 @@ while IFS= read -r id; do
     printf '  %-30s MISSING — scripts/sync-repos.sh --repo %s\n' "$id" "$id"
   fi
 done < <(mos_yaml_repo_ids 2>/dev/null || true)
+
+# --- Scorecard --------------------------------------------------------------
+printf '\n== Scorecard ==\n'
+if [ -d "$root/work" ]; then
+  current=$(mos_harness_version 2>/dev/null || printf 'unknown')
+  if rows=$("$SCRIPT_DIR/scorecard.sh" --no-traces 2>/dev/null); then
+    # Column indices follow scorecard.sh's HEADER (1-based): 3 harness,
+    # 34 docs_missing — keep in sync with scorecard.sh HEADER.
+    printf '%s\n' "$rows" | awk -F'\t' -v cur="$current" '
+NR > 1 { n++; if ($3 == cur) on++; if ($34 ~ /(plan-review|impl-review|verification|diff-review)/) gaps++ }
+END { printf "  %d item(s), %d on %s, %d with gaps — scripts/scorecard.sh --summary\n", n, on, cur, gaps }'
+  else
+    printf '  (scorecard unavailable — run scripts/scorecard.sh for details)\n'
+  fi
+else
+  printf '  (no work/ directory)\n'
+fi
 
 # --- Validation -------------------------------------------------------------
 printf '\n== Validation ==\n'
