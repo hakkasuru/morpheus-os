@@ -8,6 +8,8 @@ epic: null
 created: {{DATE}}
 updated: {{DATE}}
 mr: null
+harness: {{HARNESS}}
+workspace_rev: {{WORKSPACE_REV}}
 ---
 
 ## Request
@@ -20,4 +22,3 @@ mr: null
 
 ## Activity
 
-- {{DATE}} — created
