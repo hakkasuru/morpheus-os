@@ -27,10 +27,9 @@ Entered only on the human's explicit ask — see § Feedback. A merged item
 Exception states (not on the pipeline):
 
 - `blocked` — work cannot proceed; orthogonal to phase, keeps whatever phase
-  docs it already has. Setting `status: blocked` appends an `## Activity`
-  line: `- YYYY-MM-DD — blocked (was: <status>; unblock: <condition>)`. To
-  resume: restore `status:` to that `was:` value, then append
-  `- YYYY-MM-DD — unblocked, resuming <status>`.
+  docs it already has. Setting blocked is `scripts/event.sh <work-id>
+  blocked was=<status> "unblock=<condition>"`; resuming is `scripts/event.sh
+  <work-id> unblocked`.
 - `cancelled` — terminal. Move the folder to `work/done/` like `done`.
 
 Status lives in `task.md` (or `epic.md`) frontmatter `status:`. The folder a
@@ -43,10 +42,11 @@ items only (standalone tasks/stories, and epics themselves):
 | `work/active/`   | any pipeline status between `context` and `awaiting-merge`, `feedback`, or `blocked` |
 | `work/done/`      | `done`, `cancelled`                     |
 
-Moving the folder and updating `status:` are one atomic edit — never do one
-without the other. `scripts/validate.sh` cross-checks folder vs. status for
-top-level items, and that phase docs exist only from the status onward that
-creates them.
+Moving the folder and recording the status change
+(`scripts/event.sh <work-id> status from=<...> to=<...>`) are one atomic
+edit — never do one without the other. `scripts/validate.sh` cross-checks
+folder vs. status for top-level items, and that phase docs exist only from
+the status onward that creates them.
 
 Epic children are the exception: a child story/task lives inside its epic's
 folder (`work/<coarse-state>/E-.../<child-id>/`) for its ENTIRE lifecycle,
@@ -77,31 +77,43 @@ Gates 1-2 (plan-review, impl-review) use their doc's own approval-state field
 1. Dispatch a plan-review subagent per `workflow/plan-reviewer.md`. It
    writes `<gate-doc>-review.md` next to the doc and returns a confidence
    score (0-100) plus whether auto-approval is barred by a hard cap.
+   Record it: `scripts/event.sh <work-id> gate-review gate=<1|2>
+   round=<n> confidence=<score> barred=<yes|no> inherent=<yes|no>
+   review=<review-doc>` — after EVERY review round, including the
+   feedback re-visit of gate 2.
 2. **Auto-approval (opt-in):** if `config/preferences.md` sets an
    auto-approve threshold, the score meets it, and no hard cap fired → set
    the doc `status: approved`, `approved_at: <date>`,
-   `approved_by: plan-reviewer (confidence <score>)`, append an Activity
-   line `- YYYY-MM-DD — gate auto-approved (confidence <score>, review:
-   <review-doc>)`, and advance. The human can veto any auto-approval later
-   by setting `status: changes-requested` — treat that like any
+   `approved_by: plan-reviewer (confidence <score>)`, record
+   `scripts/event.sh <work-id> gate-approved gate=<n> by=auto
+   confidence=<score>` (writes the Activity line and `events.log`), and
+   advance. The human can veto any auto-approval later by setting
+   `status: changes-requested` (record `scripts/event.sh <work-id>
+   changes-requested gate=<n> by=human`) — treat that like any
    changes-requested loop.
 3. **Autonomous revision (opt-in, bounded):** auto-approval is enabled,
    the score fell short, and NO stop condition in the loop policy below
-   fired → the orchestrator may revise the doc against the review's
-   findings and re-dispatch the reviewer (back to step 1). Append an
-   Activity line per round:
-   `- YYYY-MM-DD — gate review round <n> (confidence <score>)`.
+   fired → record `scripts/event.sh <work-id> changes-requested gate=<n>
+   by=auto` (this is what `by=auto` is for — the scorecard's
+   `changes_requested` column counts human and autonomous rounds alike),
+   revise the doc against the review's findings, then re-dispatch the
+   reviewer (back to step 1) and record the new round as in step 1
+   (`round=<n+1>`).
 4. **Otherwise (no threshold set, a stop condition fired, or a hard cap
    fired):** set the doc `status: in-review`, present a concise summary,
    the doc path, and the review's score + top findings — plus, after any
    autonomous rounds, the round history (scores, what improved, what's
    still open) — then STOP and wait.
    Approved → `status: approved` + `approved_at: <date>` +
-   `approved_by: human`, advance the work item's `status:` per the map
-   below. Changes requested → `status: changes-requested`, revise,
-   re-present — the reviewer runs again on the revised doc, and the loop
-   continues until the human approves. Human-driven rounds are unbounded
-   by design and reset the autonomous round counter to zero.
+   `approved_by: human`, record `scripts/event.sh <work-id> gate-approved
+   gate=<n> by=human confidence=<score>` and advance the work item's
+   `status:` per the map below (`scripts/event.sh <work-id> status
+   from=<...> to=<...>`). Changes requested → `status: changes-requested`,
+   record `scripts/event.sh <work-id> changes-requested gate=<n>
+   by=human`, revise, re-present — the reviewer runs again on the revised
+   doc, and the loop continues until the human approves. Human-driven
+   rounds are unbounded by design and reset the autonomous round counter
+   to zero.
 
 **Loop policy — stop conditions.** An *autonomous round* is one
 revise-and-re-review cycle with no human contact in between (step 3).
@@ -135,9 +147,10 @@ sets `Auto-deliver: on`, the gate proceeds without waiting — but only when
 red gate, FAIL or missing diff review, or blocked state still stops for the
 human, and carried MINOR diff-review findings are listed in the MR
 description (they no longer have a guaranteed human viewer at the gate).
-Record the outcome via `mr:` in task.md plus an Activity line:
-`- YYYY-MM-DD — delivery approved, MR created: <url>` (human), or
-`- YYYY-MM-DD — delivery auto-approved (Auto-deliver: on), MR created: <url>`.
+Record the outcome: set `mr:` in task.md, then `scripts/event.sh <work-id>
+delivered mode=<human|auto> mr=<url>` (mode `auto` only under
+`Auto-deliver: on`) — this writes the Activity line and sets
+`status: awaiting-merge`.
 
 ## Phase → doc → exit map
 
@@ -192,9 +205,8 @@ for either of two reasons:
   before the MR merges ("on <work-id>, also change X").
 
 The orchestrator never reopens an item on its own, whatever `mr-check.sh`
-reports. The reopen is one atomic edit: set `status: feedback` (the folder
-stays under `work/active/`), append
-`- YYYY-MM-DD — reopened: <MR feedback | change request> (round <n>)`.
+reports. The reopen is one command: `scripts/event.sh <work-id> feedback
+round=<n> reason=<mr|human>` (the folder stays under `work/active/`).
 
 Then follow `phases/07-feedback.md`: recreate worktrees on the existing
 task branches (`scripts/worktree.sh add <repo-id> <work-id> --existing`),
@@ -218,19 +230,81 @@ learns that, both ending in the human's ask:
 Then follow `phases/08-close.md`: confirm the merge via the host CLI
 (`glab mr view` / `gh pr view`) before closing — the human's word plus a
 CLI confirmation, never one alone unless the CLI is unavailable and the
-human confirms that explicitly; delete the merged local task branch; set
-`status: done`, append `- YYYY-MM-DD — MR merged, closed`, and move the
+human confirms that explicitly; delete the merged local task branch;
+`scripts/event.sh <work-id> merged mr=<url>`, and move the
 folder to `work/done/` (epic children stay in place; the epic moves when
 all children are `done`|`cancelled`). An MR closed WITHOUT merging is the
 human's call: `cancelled`, or `feedback` to rework and reopen the MR.
 
 ## Activity discipline
 
-On every status change, append one line to `task.md`/`epic.md` `## Activity`:
+Every status change and every gate, step, review, delivery and merge is
+recorded with ONE command, which appends a machine-readable line to the
+item's `events.log`, appends the dated prose line to `## Activity`, applies
+the event's status effect to `status:` and bumps `updated:`:
 
 ```
-- YYYY-MM-DD — <status change or event>
+scripts/event.sh <work-id> <event> [key=value ...] [-- "<prose>"]
 ```
+
+Never edit `status:` by hand and never write an Activity line without its
+event. When `-- "<prose>"` is omitted a prose line is generated from the
+fields; give your own when there is something worth saying.
+
+| Event | Required keys | Status effect |
+|---|---|---|
+| `created` | — | — |
+| `status` | `from`, `to` | `to` |
+| `gate-review` | `gate` (1\|2), `round`, `confidence`, `barred` (yes\|no), `inherent` (yes\|no), `review` (the review doc) | — |
+| `gate-approved` | `gate`, `by` (human\|auto), `confidence` | — |
+| `changes-requested` | `gate`, `by` (human\|auto) | — |
+| `blocked` | `was`, `unblock` | `blocked` |
+| `unblocked` | (`to` optional) | the `was` of the last `blocked` |
+| `step` | `step`, `result` (pass\|fail), `attempts`; optional `repo`, `agent` | — |
+| `diff-review` | `repo`, `verdict` (PASS\|FAIL), `findings` | — |
+| `verification` | `gates` (`<passed>/<total>`), `verdict` (PASS\|FAIL) | — |
+| `delivered` | `mode` (human\|auto), `mr` | `awaiting-merge` |
+| `merged` | `mr` | `done` |
+| `closed-unmerged` | `mr` | — |
+| `feedback` | `round`, `reason` (mr\|human) | `feedback` |
+| `reverted` | `mr`; optional `by` | — |
+| `correction` | `what` | — |
+| `harvest` | `new`, `updated` | — |
+| `cancelled` | `reason` | `cancelled` |
+
+Folder moves (`backlog/` → `active/` → `done/`) stay an explicit step next
+to the event, as § States describes; `scripts/validate.sh` cross-checks
+folder against status and, for every item with an `events.log`, that the
+gate docs its status requires exist and are approved.
+
+## Run record
+
+Every work item is an evaluation of the harness that ran it. From creation
+it carries:
+
+- `harness: <VERSION>+<template commit>` and `workspace_rev:` in its
+  frontmatter, written by `scripts/new-work.sh` (re-stamp or backfill old
+  items with `scripts/stamp.sh`). `VERSION` at the template root is the
+  harness version; the session brief prints it and says when
+  `upstream/main` has a newer one.
+- `events.log` — the structured log § Activity discipline describes.
+- `trace/` — `briefs/` (every subagent brief the orchestrator sent, saved
+  via `scripts/trace-capture.sh path`), `reports/` (the implementer's own
+  report per step; the reviewers' reports are their review docs next to
+  the plans), `sessions.tsv` (pointers to the agent's session transcripts)
+  and `raw/` (gitignored copies of subagent transcripts). On Claude Code
+  and Copilot CLI, project hooks fill `sessions.tsv` and `raw/`
+  automatically; other agents get `briefs/` and `reports/`.
+
+Transcripts that name no work item land in `work/.trace-unassigned/`
+(gitignored) together with a pointer row for every session — it grows by
+several MB per session and is safe to delete at any time.
+
+`scripts/scorecard.sh` turns the records into one row per item and, with
+`--summary`, one row per harness version — the before/after view for any
+harness change (`/scorecard`). Items that predate the run record have no
+`events.log`; their gaps are reported as warnings and counted as data, never
+backfilled.
 
 ## Hard rules
 
@@ -248,7 +322,10 @@ On every status change, append one line to `task.md`/`epic.md` `## Activity`:
 - MR state is read, never acted on: `scripts/mr-check.sh` (run by the
   session brief and on request) only reports. Closing (§ Closing on
   merge) and reopening (§ Feedback) happen on the human's explicit ask.
-- Blocked beats guessing — if information is missing or a check fails, set
-  `status: blocked` and ask; never improvise past it.
+- Blocked beats guessing — if information is missing or a check fails,
+  `scripts/event.sh <work-id> blocked was=<status> "unblock=<condition>"`
+  and ask; never improvise past it.
 - Update the doc's `updated:` field on every edit, not just on phase change.
+- Status changes go through `scripts/event.sh`. A `status:` edited by hand
+  disagrees with `events.log` and fails validation.
 - Never invent a status outside the vocabulary above.

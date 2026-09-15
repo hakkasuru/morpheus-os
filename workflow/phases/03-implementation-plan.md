@@ -26,21 +26,31 @@ The plan is approved. Status is `impl-planning`.
    prefix from the repo's registry entry or `work/`; apply the branch-naming
    scheme from `config/preferences.md` if one is set), MR title(s),
    target branch per repo (its `default_branch:` from `config/repos.yaml`).
-7. GATE: set the work item's `status: impl-review`, then dispatch a
-   plan-review subagent per `workflow/plan-reviewer.md` and run the gate
-   procedure in `workflow/WORKFLOW.md` § Review gates — auto-approve on a
-   qualifying confidence score (opt-in, no hard cap fired), otherwise set
+7. GATE: `scripts/event.sh <work-id> status from=impl-planning
+   to=impl-review`, save the reviewer brief (`scripts/trace-capture.sh
+   path <work-id> brief 03 plan-reviewer`), then dispatch a plan-review
+   subagent per `workflow/plan-reviewer.md` and run the gate procedure in
+   `workflow/WORKFLOW.md` § Review gates. After EVERY review round record
+   `scripts/event.sh <work-id> gate-review gate=2 round=<n>
+   confidence=<score> barred=<yes|no> inherent=<yes|no>
+   review=03-implementation-plan-review.md`. Auto-approve on a qualifying
+   score (opt-in, no hard cap fired): `scripts/event.sh <work-id>
+   gate-approved gate=2 by=auto confidence=<score>`; otherwise set
    `03-implementation-plan.md` `status: in-review`, present to the human,
    STOP and wait.
 
 ## Exit
 
-Approved (human, or auto per the gate procedure) →
-`03-implementation-plan.md` `status: approved` + `approved_at:` +
-`approved_by:`, work item `status: executing`. Changes requested →
-`status: changes-requested`, revise, re-present (the reviewer runs again on
-the revision; autonomous rounds are bounded by the loop policy in
-`workflow/WORKFLOW.md` § Review gates — human-driven rounds are not).
+Approved → `03-implementation-plan.md` `status: approved` + `approved_at:`
++ `approved_by:`; `scripts/event.sh <work-id> gate-approved gate=2
+by=human confidence=<score>` (when the human approved) and
+`scripts/event.sh <work-id> status from=impl-review to=executing`.
+Changes requested → `03-implementation-plan.md` `status:
+changes-requested`, `scripts/event.sh <work-id> changes-requested gate=2
+by=<human|auto>` (auto = an autonomous revision round), revise, re-present
+(the reviewer runs again on the revision; autonomous rounds are bounded by
+the loop policy in `workflow/WORKFLOW.md` § Review gates — human-driven
+rounds are not).
 
 ## Hard rules
 

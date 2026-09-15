@@ -22,7 +22,7 @@ Directory map:
 - `scripts/` — bash automation: registry sync, work scaffolding, worktree management, validation.
 - `workflow/` — the work lifecycle definition (`WORKFLOW.md`) and per-phase instructions (`phases/`).
 - `templates/` — document shapes for work items (`templates/work/`) and knowledge docs (`templates/knowledge/`).
-- `work/` — work items in flight, organized by coarse state: `backlog/`, `active/`, `done/`.
+- `work/` — work items in flight, organized by coarse state: `backlog/`, `active/`, `done/`. Each item carries its run record: `events.log`, `trace/`, and a `harness:` stamp (see `workflow/WORKFLOW.md` § Run record).
 - `knowledge/` — durable knowledge base about registered repos: `decisions/`, `runbooks/`, `references/`, `notes/`, `repos/`.
 
 ## 2. Prime directives
@@ -47,6 +47,19 @@ Directory map:
 - Read `config/preferences.md` at session start and apply it. When the
   human corrects the same thing twice, offer to record it there (append,
   dated).
+- Change a work item's `status:` only through `scripts/event.sh` — never
+  edit the field by hand. Every status change, gate result, step, review,
+  delivery and merge is an event (vocabulary: `workflow/WORKFLOW.md`
+  § Activity discipline); the command writes the events log, the prose
+  Activity line and the status in one go.
+- Save every subagent brief before dispatching it: write it to the path
+  `scripts/trace-capture.sh path <work-id> brief <phase> <agent>` prints.
+  Put the implementer's report path (`… report 04 implementer --step <k>`)
+  in its brief.
+- When the human corrects you — a wrong assumption, a skipped rule, a
+  convention you missed — log it: `scripts/event.sh <work-id> correction
+  "what=<one line>"`. The same log drives the "corrected twice → offer to
+  record a preference" rule.
 
 ## 3. Workflow router
 

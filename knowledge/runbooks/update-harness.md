@@ -4,7 +4,7 @@ title: "Update harness"
 description: "Pull the latest harness machinery from the public template (upstream) into this workspace, apply the changelog's action items, verify, push to origin."
 status: stable
 created: 2026-09-14
-updated: 2026-09-14
+updated: 2026-09-15
 stale_after: null # YYYY-MM-DD — re-verify after this date
 tags: [maintenance, upstream, template]
 repo: null
@@ -57,7 +57,10 @@ template has moved.
    git diff HEAD...upstream/main -- CHANGELOG.md
    ```
 
-   Nothing listed → the harness is current; stop here and say so.
+   Nothing listed → the harness is current; stop here and say so. The
+   session brief also says `Harness update available: upstream/main is <v>`
+   when `VERSION` upstream is newer — that line is the cheap way to
+   notice.
 
 2. **[destructive — confirm]** Merge `upstream/main` into `main`. Show the
    human the file list first (`git diff --stat HEAD...upstream/main`):
@@ -102,6 +105,13 @@ template has moved.
    ```
    git push origin main
    ```
+
+## For template maintainers
+
+Every change to the template bumps `VERSION` (major when the changelog
+entry has an action item, minor for new behaviour, patch for fixes/docs)
+and the new `CHANGELOG.md` entry heading is `## <version> — <date>`;
+`scripts/validate.sh --harness` fails when they disagree.
 
 ## Rollback
 

@@ -24,9 +24,10 @@ or asked to scaffold one). Status is `intake`, folder under `work/backlog/`.
      NOT registered → offer the `add-repo` runbook first.
    - Epic children: set `epic:` to the parent epic's id.
 3. Advance — one atomic edit, per `workflow/WORKFLOW.md` § States: move
-   the folder `work/backlog/` → `work/active/` AND set `status: context`
-   (epic children: status only, the folder stays inside the epic), append
-   the `## Activity` line, then continue with `phases/01-context.md`.
+   the folder `work/backlog/` → `work/active/` (epic children: the folder
+   stays inside the epic) AND record the status change:
+   `scripts/event.sh <work-id> status from=intake to=context -- "framed: <one line>"`,
+   then continue with `phases/01-context.md`.
    Work that should wait in the backlog instead: leave it — folder in
    `work/backlog/`, `status: intake` is a complete, legal resting state.
 
