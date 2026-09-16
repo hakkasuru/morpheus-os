@@ -6,6 +6,36 @@ pulling (`git pull upstream main`). Machinery details live in `git log`.
 
 Every entry answers: **Action needed after pulling?**
 
+## 1.1.0 — 2026-09-16
+
+- **Export the run record to an experience store**
+  (`scripts/export-experience.sh`, new `knowledge/runbooks/export-experience.md`
+  runbook, `/export-experience` command). Copies finished work items
+  (`work/done/`, or also `work/active/` with `--include-active`) — their
+  docs, `events.log`, `trace/` and the session transcripts their
+  `trace/sessions.tsv` point at — plus a `scripts/scorecard.sh` snapshot
+  and `config/preferences.md`, into `<store>/<workspace>/` (contract:
+  `manifest.tsv`, `items/<id>/`, `sessions/<sid>.jsonl`,
+  `scorecard-<ts>.tsv`, `summary-<ts>.tsv`, `config/preferences.md`;
+  `store_version: 1`). It is strictly read-only on this workspace — it
+  writes only under `--dest`, which must be a directory outside the
+  workspace. A secrets sweep runs over everything first; any token-shaped
+  hit aborts with the offending `file:line` list before any write, unless
+  `--ignore-sweep` is given (which exports anyway and warns loudly).
+  `--dry-run` lists what would be exported without writing anything.
+- **The proposer is a separate repo**
+  (`knowledge/decisions/proposer-loop-separate-repo.md`). The exporter
+  above is the whole of this template's side of the Meta-Harness loop: a
+  separate repo (`meta-morpheus-os`) registers live workspaces, runs their
+  exporter to pull a store snapshot, and proposes harness changes back as
+  pull/merge requests reviewed like any other change. This workspace never
+  reads the store and nothing in the workflow depends on the export
+  existing.
+- **Action needed after pulling?** None — the exporter is inert until a
+  proposer runs it. Optionally try
+  `scripts/export-experience.sh --dest <dir> --dry-run` to see what it
+  would export.
+
 ## 1.0.0 — 2026-09-15
 
 - **The template has a version.** `VERSION` (semver) at the root; this is

@@ -239,6 +239,13 @@ them per harness version: gate rounds and confidences, auto-approval rate,
 changes requested, blocked items, human corrections, reverts, items with
 gate gaps, lead time. That table is how a harness change is evaluated.
 
+**Feeding the proposer:** `scripts/export-experience.sh --dest <store>` (or
+`/export-experience`) copies the run record of finished items — docs, events
+log, traces, the session transcripts they point at — plus scorecard snapshots
+into an experience store outside the workspace, after a secrets sweep. The
+store is read by a separate proposer repo that suggests harness changes as
+pull requests; see `knowledge/decisions/proposer-loop-separate-repo.md`.
+
 **Housekeeping:** run `scripts/status.sh` periodically (it subsumes
 `worktree.sh list` and the validation sweep), and keep
 `config/preferences.md` current as your conventions change.

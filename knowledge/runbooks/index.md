@@ -7,3 +7,4 @@
 * [KB migrate](/knowledge/runbooks/kb-migrate.md) - adopt a newer OKF spec version across templates, validation, rules, and all docs.
 * [Import bundle](/knowledge/runbooks/import-bundle.md) - vendor an external knowledge bundle read-only under knowledge/bundles/.
 * [Share bundle](/knowledge/runbooks/share-bundle.md) - export a knowledge/ subtree as a standalone OKF bundle.
+* [Export experience](/knowledge/runbooks/export-experience.md) - copy finished work items, traces and scorecard snapshots into an experience store for the proposer repo.

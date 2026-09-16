@@ -306,6 +306,15 @@ harness change (`/scorecard`). Items that predate the run record have no
 `events.log`; their gaps are reported as warnings and counted as data, never
 backfilled.
 
+The record leaves the workspace only on demand: `scripts/export-experience.sh
+--dest <store>` copies finished items, their traces and the session
+transcripts they point at, plus scorecard and preferences snapshots, into an
+experience store OUTSIDE the workspace (layout: `manifest.tsv`, `items/`,
+`sessions/`, `scorecard-*.tsv`). A separate proposer repo (meta-morpheus-os)
+registers live workspaces, runs their exporter, reads the store and proposes
+harness changes to the template as pull/merge requests. This workspace never
+reads the store, and nothing in the workflow depends on the export.
+
 ## Hard rules
 
 - Never skip a gate. Gates 1-2 may be auto-approved only via the documented
