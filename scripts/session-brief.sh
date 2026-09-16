@@ -242,8 +242,24 @@ section() {
   printf '%s\n' "$2" | sed 's/^/  - /'
 }
 
+# --- Harness version ----------------------------------------------------------
+harness_line=$(mos_harness_version 2>/dev/null || printf 'unknown (no VERSION file)')
+drift_line=""
+if git -C "$root" rev-parse --verify -q upstream/main >/dev/null 2>&1; then
+  up_ver=$(git -C "$root" show upstream/main:VERSION 2>/dev/null | head -1 | tr -d ' \t\r' || true)
+  local_ver=${harness_line%%+*}
+  if mos_semver_ok "$up_ver" && mos_semver_ok "$local_ver" &&
+    [ "$(printf '%s\n%s\n' "$local_ver" "$up_ver" | awk -F. '{ printf "%05d%05d%05d %s\n", $1, $2, $3, $0 }' | LC_ALL=C sort | tail -1 | cut -d' ' -f2)" = "$up_ver" ] &&
+    [ "$up_ver" != "$local_ver" ]; then
+    drift_line="Harness update available: upstream/main is $up_ver (run the update-harness runbook)"
+  fi
+fi
+
 brief=$(
-  printf 'Session brief — %s\n\n' "$today"
+  printf 'Session brief — %s\n' "$today"
+  printf 'Harness: %s\n' "$harness_line"
+  [ -z "$drift_line" ] || printf '%s\n' "$drift_line"
+  printf '\n'
 
   if [ "$n_open" -eq 0 ] && [ "$n_kb" -eq 0 ]; then
     printf 'Nothing to pick up: no open work items and the knowledge base is fresh.\n'

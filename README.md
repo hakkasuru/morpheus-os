@@ -225,6 +225,20 @@ installed at user level. `--hook claude` / `--hook copilot` emit each
 client's session-start JSON; other agents can wire the plain-text output
 into their own session-start mechanism.
 
+**Which harness version am I on?** `VERSION` at the root, shown as
+`Harness: <version>+<commit>` on the second line of every session brief,
+with a `Harness update available` line when upstream has moved.
+
+**How is the harness doing?** Every work item carries a run record — a
+version stamp, a structured `events.log` (written by `scripts/event.sh`
+together with the prose Activity line), and a `trace/` folder with every
+subagent brief, the implementer's reports and, on Claude Code and Copilot
+CLI, pointers to and copies of the raw transcripts (`trace/raw/` is
+gitignored). `scripts/scorecard.sh --summary` (or `/scorecard`) aggregates
+them per harness version: gate rounds and confidences, auto-approval rate,
+changes requested, blocked items, human corrections, reverts, items with
+gate gaps, lead time. That table is how a harness change is evaluated.
+
 **Housekeeping:** run `scripts/status.sh` periodically (it subsumes
 `worktree.sh list` and the validation sweep), and keep
 `config/preferences.md` current as your conventions change.

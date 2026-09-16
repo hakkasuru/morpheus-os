@@ -12,6 +12,28 @@
           }
         ]
       }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR:-.}/scripts/trace-capture.sh\" --hook subagent-stop 2>/dev/null || true",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR:-.}/scripts/trace-capture.sh\" --hook stop 2>/dev/null || true",
+            "timeout": 20
+          }
+        ]
+      }
     ]
   }
 }

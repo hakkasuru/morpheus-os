@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # lib.sh — shared helpers for the Morpheus OS scripts.
-# Sourced by sync-repos.sh, new-work.sh, worktree.sh, validate.sh.
+# Sourced by every script under scripts/.
 # bash 3.2 compatible; no GNU-only flags. No side effects on source.
 set -euo pipefail
 
@@ -394,4 +394,209 @@ NR == 1 {
 }
 END { exit (found ? 0 : 1) }
 ' "$file"
+}
+
+# mos_frontmatter_set <file> <field> <value> — rewrite one scalar in the first
+# --- ... --- block, or insert "<field>: <value>" just before the closing ---
+# when the field is absent. In place via temp file + mv (no sed -i: GNU and
+# BSD disagree on its syntax). Dies when the file has no frontmatter block.
+mos_frontmatter_set() {
+  [ $# -eq 3 ] || mos_die "mos_frontmatter_set: need <file> <field> <value>"
+  local file="$1" field="$2" value="$3" tmp nl
+  [ -f "$file" ] || mos_die "mos_frontmatter_set: no such file: $file"
+  nl=$(printf '\n.')
+  nl=${nl%.}
+  case "$value" in
+    *"$nl"*) mos_die "mos_frontmatter_set: value for '$field' may not contain a newline" ;;
+  esac
+  case "$field" in
+    '' | *[!A-Za-z0-9_.-]*) mos_die "mos_frontmatter_set: bad field name '$field'" ;;
+  esac
+  tmp="$file.tmp.$$"
+  if ! awk -v want="$field" -v val="$value" '
+NR == 1 {
+  print
+  if ($0 !~ /^---[ \t\r]*$/) bad = 1
+  next
+}
+bad { print; next }
+!closed && $0 ~ /^---[ \t\r]*$/ {
+  if (!done) { print want ": " val; done = 1 }
+  closed = 1
+  print
+  next
+}
+!closed && index($0, want ":") == 1 {
+  if (!done) { print want ": " val; done = 1 }
+  next
+}
+{ print }
+END { if (bad || !closed) exit 1 }
+' "$file" >"$tmp"; then
+    rm -f "$tmp"
+    mos_die "mos_frontmatter_set: $file has no YAML frontmatter block"
+  fi
+  mv "$tmp" "$file"
+}
+
+# --- run record: versions, time, work items --------------------------------
+
+# mos_statuses — the legal work-item statuses (workflow/WORKFLOW.md § States),
+# space-separated on one line. The single source for validate.sh/event.sh.
+mos_statuses() {
+  printf 'intake context planning plan-review impl-planning impl-review executing verifying delivering awaiting-merge feedback done blocked cancelled\n'
+}
+
+# mos_status_rank <status> — position on the pipeline (1 intake … 11 done);
+# feedback re-enters at executing depth (7); blocked/cancelled/unknown = 0.
+mos_status_rank() {
+  case "${1:-}" in
+    intake) printf '1\n' ;; context) printf '2\n' ;; planning) printf '3\n' ;;
+    plan-review) printf '4\n' ;; impl-planning) printf '5\n' ;; impl-review) printf '6\n' ;;
+    executing | feedback) printf '7\n' ;; verifying) printf '8\n' ;; delivering) printf '9\n' ;;
+    awaiting-merge) printf '10\n' ;; done) printf '11\n' ;;
+    *) printf '0\n' ;;
+  esac
+}
+
+# mos_event_vocab — the events.log vocabulary (workflow/WORKFLOW.md § Activity
+# discipline), one line per event: event|required keys|optional keys|status
+# effect. Status effect: "-" none, a status name, "=to" (the to= key), or
+# "unblocked" (the was= of the last blocked event). event.sh validates
+# against it; validate.sh checks events.log lines against the names.
+mos_event_vocab() {
+  cat <<'EOF'
+created|||-
+status|from to||=to
+gate-review|gate round confidence barred inherent review||-
+gate-approved|gate by confidence||-
+changes-requested|gate by||-
+blocked|was unblock||blocked
+unblocked||to|unblocked
+step|step result attempts|repo agent|-
+diff-review|repo verdict findings||-
+verification|gates verdict||-
+delivered|mode mr||awaiting-merge
+merged|mr||done
+closed-unmerged|mr||-
+feedback|round reason||feedback
+reverted|mr|by|-
+correction|what||-
+harvest|new updated||-
+cancelled|reason||cancelled
+EOF
+}
+
+# mos_event_names — the event names, space-separated on one line.
+mos_event_names() {
+  mos_event_vocab | cut -d'|' -f1 | tr '\n' ' ' | sed 's/ $//'
+  printf '\n'
+}
+
+# mos_semver_ok <value> — true for MAJOR.MINOR.PATCH, digits only.
+mos_semver_ok() {
+  printf '%s' "${1:-}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'
+}
+
+# mos_template_version — the semver in VERSION at the workspace root.
+mos_template_version() {
+  local root v
+  root=$(mos_root)
+  [ -f "$root/VERSION" ] || mos_die "VERSION is missing at $root — the template ships one; restore it from upstream/main"
+  v=$(head -1 "$root/VERSION" | tr -d ' \t\r')
+  mos_semver_ok "$v" || mos_die "VERSION '$v' is not MAJOR.MINOR.PATCH"
+  printf '%s\n' "$v"
+}
+
+# mos_template_commit — short SHA of the template commit in effect: the
+# merge-base of HEAD and upstream/main when an upstream remote exists (the
+# template commit this workspace last merged), else HEAD (the template repo
+# itself), else "unknown" (no git, or no commits yet).
+mos_template_commit() {
+  local root sha=""
+  root=$(mos_root)
+  if ! git -C "$root" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    printf 'unknown\n'
+    return 0
+  fi
+  if git -C "$root" rev-parse --verify -q upstream/main >/dev/null 2>&1; then
+    sha=$(git -C "$root" merge-base HEAD upstream/main 2>/dev/null || true)
+  fi
+  [ -n "$sha" ] || sha=$(git -C "$root" rev-parse HEAD 2>/dev/null || true)
+  if [ -z "$sha" ]; then
+    printf 'unknown\n'
+    return 0
+  fi
+  git -C "$root" rev-parse --short "$sha"
+}
+
+# mos_harness_version — "<semver>+<commit>", the stamp written to harness:.
+mos_harness_version() {
+  local v c
+  v=$(mos_template_version) || return 1
+  c=$(mos_template_commit) || return 1
+  printf '%s+%s\n' "$v" "$c"
+}
+
+# mos_workspace_rev — short SHA of the workspace HEAD, or "unknown".
+mos_workspace_rev() {
+  git -C "$(mos_root)" rev-parse --short HEAD 2>/dev/null || printf 'unknown\n'
+}
+
+# mos_now_iso — UTC timestamp YYYY-MM-DDTHH:MM:SSZ (events.log field 1).
+mos_now_iso() {
+  date -u +%Y-%m-%dT%H:%M:%SZ
+}
+
+# mos_iso_to_epoch <YYYY-MM-DD | YYYY-MM-DDTHH:MM:SSZ> — epoch seconds, UTC.
+# perl, like mos_days_ago_iso: `date -d` / `date -j` are non-portable.
+# Returns 1 without output when the value is malformed or perl is missing.
+mos_iso_to_epoch() {
+  local ts="${1:-}"
+  case "$ts" in
+    [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ts="${ts}T00:00:00Z" ;;
+    [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z) : ;;
+    *) return 1 ;;
+  esac
+  command -v perl >/dev/null 2>&1 || return 1
+  perl -MTime::Local=timegm -e '
+    my ($y,$m,$d,$H,$M,$S) = $ARGV[0] =~ /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})Z$/ or exit 1;
+    print timegm($S,$M,$H,$d,$m-1,$y), "\n";' "$ts"
+}
+
+# mos_work_item_dir <work-id | folder> — absolute path of the work item's
+# folder. A folder argument (containing task.md or epic.md) is resolved
+# as-is; an id is searched under work/{backlog,active,done}/<id> and one
+# level down inside epics (work/<state>/E-*/<id>). Dies on 0 or >1 matches.
+mos_work_item_dir() {
+  local arg="${1:-}" root matches n
+  [ -n "$arg" ] || mos_die "mos_work_item_dir: need <work-id | folder>"
+  if [ -d "$arg" ] && { [ -f "$arg/task.md" ] || [ -f "$arg/epic.md" ]; }; then
+    (cd "$arg" && pwd -P)
+    return 0
+  fi
+  case "$arg" in
+    */*) mos_die "no work item at '$arg' (no task.md or epic.md there)" ;;
+  esac
+  root=$(mos_root)
+  matches=$(find "$root/work" -mindepth 2 -maxdepth 3 -type d -name "$arg" 2>/dev/null | LC_ALL=C sort)
+  n=$(printf '%s\n' "$matches" | grep -c . || true)
+  case "$n" in
+    0) mos_die "no work item '$arg' under work/ (backlog, active, done, or inside an epic)" ;;
+    1) printf '%s\n' "$matches" ;;
+    *) mos_die "work id '$arg' is ambiguous — found $n folders:
+$(printf '%s\n' "$matches" | sed 's/^/  /')" ;;
+  esac
+}
+
+# mos_work_item_doc <folder> — the item's task.md or epic.md path.
+mos_work_item_doc() {
+  local dir="${1:-}"
+  if [ -f "$dir/task.md" ]; then
+    printf '%s/task.md\n' "$dir"
+  elif [ -f "$dir/epic.md" ]; then
+    printf '%s/epic.md\n' "$dir"
+  else
+    mos_die "no task.md or epic.md in $dir"
+  fi
 }

@@ -15,24 +15,30 @@ All implementation steps are committed. Status is `verifying`.
    — against origin/, not the local branch: the local default branch can
    lag the fetch the worktree was branched from, and a stale merge-base
    would drag unrelated upstream commits into the reviewed diff)
-   and dispatch a diff-reviewer subagent per `workflow/diff-reviewer.md`
-   with the diff, the approved plans, and the repo's conventions doc. It
-   writes `04-diff-review.md` and returns PASS or FAIL. FAIL → loop back
-   through `phases/04-execute.md` to fix the blocking findings (revising
-   the impl plan first if the fix needs an unplanned step), then re-run
-   this phase.
+   and save the reviewer brief (`scripts/trace-capture.sh path <work-id>
+   brief 05 diff-reviewer`). Then dispatch a diff-reviewer subagent per
+   `workflow/diff-reviewer.md` with the diff, the approved plans, and the
+   repo's conventions doc. It writes `04-diff-review.md` and returns PASS
+   or FAIL. Record the verdict: `scripts/event.sh <work-id>
+   diff-review repo=<repo-id> verdict=<PASS|FAIL> findings=<n>`. FAIL →
+   loop back through `phases/04-execute.md` to fix the blocking findings
+   (revising the impl plan first if the fix needs an unplanned step), then
+   re-run this phase.
 4. Run `scripts/validate.sh` (workspace hygiene).
 5. Create `04-verification.md` from `templates/work/04-verification.md`:
    a per-gate table (gate | command | pass/fail | output excerpt), a
    criteria checklist with evidence per item, the diff-review verdict
    (with any MINOR findings carried for the human to see), and an
-   overall verdict.
+   overall verdict. Then `scripts/event.sh <work-id> verification
+   gates=<passed>/<total> verdict=<PASS|FAIL>`.
 
 ## Exit
 
 All gates pass, all criteria are met, and the diff review is PASS →
-`status: delivering`. Any failure → loop back through
-`phases/04-execute.md` to fix, or set `status: blocked`.
+`scripts/event.sh <work-id> status from=verifying to=delivering`. Any
+failure → loop back through `phases/04-execute.md` to fix, or
+`scripts/event.sh <work-id> blocked was=verifying
+"unblock=<condition>"`.
 
 ## Hard rules
 

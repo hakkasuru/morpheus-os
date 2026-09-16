@@ -6,6 +6,49 @@ pulling (`git pull upstream main`). Machinery details live in `git log`.
 
 Every entry answers: **Action needed after pulling?**
 
+## 1.0.0 — 2026-09-15
+
+- **The template has a version.** `VERSION` (semver) at the root; this is
+  the first versioned entry. Every entry from now on is headed
+  `## <version> — <date>`, and `scripts/validate.sh --harness` (new: the
+  template self-check, also run in CI) fails when the two disagree.
+- **Run record on every work item** (`WORKFLOW.md` § Run record,
+  § Activity discipline; new `scripts/event.sh`, `scripts/stamp.sh`,
+  `scripts/trace-capture.sh`, `scripts/scorecard.sh`; `/scorecard`).
+  `new-work.sh` stamps `harness: <VERSION>+<template commit>` and
+  `workspace_rev:` into the frontmatter and creates `events.log`. Status
+  changes and gate/step/review/delivery/merge results go through
+  `scripts/event.sh`, which writes the structured log line, the prose
+  Activity line and the `status:` field in one call — hand-edited status
+  now fails validation. Every subagent brief is saved under
+  `trace/briefs/`, the implementer writes its report under
+  `trace/reports/`, and project hooks (Claude Code `SubagentStop`/`Stop`;
+  Copilot CLI `agentStop`/`subagentStop` in
+  `.github/hooks/trace-capture.json`) record session-transcript pointers
+  in `trace/sessions.tsv` and copy subagent transcripts into the gitignored
+  `trace/raw/`. `scripts/scorecard.sh` turns records into one row per item
+  or a per-version summary; `status.sh` shows a one-line summary; the
+  session brief prints the running harness version and upstream drift.
+- **Gate consistency is validated.** For items with an `events.log`, a
+  status past a gate without an approved gate doc and its review, or a
+  delivered item without a complete verification and a PASS diff review,
+  is an error; older items get warnings. Epics whose status runs ahead of
+  their furthest-behind child are warned about.
+- **Action needed after pulling?** Yes, five things. (1) Restart the
+  session (or open `/hooks` once) so the new hooks load. (2) Run
+  `scripts/stamp.sh --backfill` once, then commit the stamps — this maps
+  every existing item to the template version that ran it. (3) Expect
+  gate-consistency warnings on old items that skipped a gate doc; leave
+  them — they are data the scorecard counts, not debt to backfill.
+  (4) Copilot CLI users: `.github/hooks/trace-capture.json` loads on the
+  next session start; session pointers resolve to
+  `~/.copilot/session-state/<sessionId>/events.jsonl` (honours
+  `COPILOT_HOME`). Token counts are unavailable on Copilot.
+  (5) `work/.trace-unassigned/` (gitignored) receives a pointer row for
+  every session plus copies of the subagent transcripts that touched no
+  work item; it grows by several MB per session and is safe to delete at
+  any time. A retention policy is deferred.
+
 ## 2026-09-14
 
 - **Update-harness runbook and template-safe remotes**

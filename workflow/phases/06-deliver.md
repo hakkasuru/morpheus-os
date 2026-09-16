@@ -13,8 +13,8 @@ Verification is complete and everything is green. Status is `delivering`.
    - **Auto-deliver (opt-in):** if `config/preferences.md` sets
      `Auto-deliver: on` AND `04-verification.md` is all green AND the diff
      review verdict is PASS → proceed without waiting. List any carried
-     MINOR diff-review findings in the MR description, and use the
-     auto-approved Activity line in step 3. Anything less than fully
+     MINOR diff-review findings in the MR description, and record the
+     delivery with `mode=auto` in step 3. Anything less than fully
      green — a red gate, a FAIL or missing diff review, a blocked item —
      is NOT auto-deliverable: fall through to the human.
    - **Otherwise:** present the verification report summary plus a
@@ -30,25 +30,24 @@ Verification is complete and everything is green. Status is `delivering`.
      exists and the push updated it. Instead post the round's replies on
      the discussion threads (addressed: what changed; answered: the
      drafted reply; a human change request needs no thread reply unless
-     the human asked for one), and append
-     `- YYYY-MM-DD — feedback round <n> delivered` in place of the
-     MR-created Activity line.
-   - Record the MR URL in `task.md` `mr:`, and append the gate-3 approval
-     record to `## Activity`:
-     `- YYYY-MM-DD — delivery approved, MR created: <url>` — or, when
-     auto-delivered,
-     `- YYYY-MM-DD — delivery auto-approved (Auto-deliver: on), MR created: <url>`.
+     the human asked for one).
+   - Record the delivery: set `task.md` `mr:` to the URL, then
+     `scripts/event.sh <work-id> delivered mode=<human|auto> mr=<url>`
+     (mode `auto` only under `Auto-deliver: on`) — this writes the gate-3
+     Activity record and sets `status: awaiting-merge`. Reopened items
+     run `scripts/event.sh <work-id> status from=delivering
+     to=awaiting-merge -- "feedback round <n> delivered"` instead.
 4. Write-time KB harvest (checklist, do not skip any item):
    - Draft new-learning docs from `templates/knowledge/` for anything
      learned this task.
    - Check every doc in `knowledge/repos/<affected-repo>/` against the
      delivered diff — update or deprecate any claim the diff invalidates.
    - Update the affected `index.md` files.
+   Record it: `scripts/event.sh <work-id> harvest new=<n> updated=<n>`.
 5. Hand over to the MR: `scripts/worktree.sh remove <repo-id> <work-id>`
    for each affected repo (the task branch stays — the MR points at it and
-   a feedback round resumes it with `--existing`), then set `task.md`
-   `status: awaiting-merge` and append
-   `- YYYY-MM-DD — awaiting merge` to `## Activity`. The folder does NOT
+   a feedback round resumes it with `--existing`). The `delivered` event
+   in step 3 already set `status: awaiting-merge`; the folder does NOT
    move: the item is delivered, not done. It closes in
    `phases/08-close.md` once the MR is merged, or re-enters via
    `phases/07-feedback.md` if the MR draws comments or the human wants a

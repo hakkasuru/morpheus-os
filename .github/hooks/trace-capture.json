@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "hooks": {
+    "agentStop": [
+      {
+        "type": "command",
+        "bash": "scripts/trace-capture.sh --hook stop --agent copilot 2>/dev/null || true",
+        "cwd": ".",
+        "timeoutSec": 20
+      }
+    ],
+    "subagentStop": [
+      {
+        "type": "command",
+        "bash": "scripts/trace-capture.sh --hook subagent-stop --agent copilot 2>/dev/null || true",
+        "cwd": ".",
+        "timeoutSec": 20
+      }
+    ]
+  }
+}

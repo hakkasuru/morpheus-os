@@ -1,0 +1,3 @@
+{"type":"user","message":{"role":"user","content":"Session brief: open work: work/active/__ID__ — smoke [context]"}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_1","name":"Read","input":{"file_path":"/tmp/x/work/active/__ID__/task.md"}}]},"usage":{"input_tokens":120,"output_tokens":30}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_2","name":"Bash","input":{"command":"ls repos/"}}]},"usage":{"input_tokens":80,"output_tokens":10}}

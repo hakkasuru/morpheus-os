@@ -16,12 +16,15 @@ WORKFLOW.md).
    `01-context.md` from `templates/work/01-context.md`, fill in
    `## Questions for the human`. Ask the human. Record the answers inline
    before moving on.
-3. Explore: dispatch explorer subagents per `workflow/explorer.md` into
-   `repos/<id>` for each affected repo — one mission per repo, with the
-   specific questions this task needs answered and the KB docs to
-   cross-check. Never modify anything in this phase — this is a read-only
-   phase. Land the explorers' findings as `## Findings` bullets, each
-   citing a concrete `repo/path/file.ext:line`.
+3. Explore: for each explorer mission, first save the brief: write it to
+   the path from `scripts/trace-capture.sh path <work-id> brief 01
+   explorer`, then dispatch the explorer with that same text. Dispatch
+   explorer subagents per `workflow/explorer.md` into `repos/<id>` for
+   each affected repo — one mission per repo, with the specific questions
+   this task needs answered and the KB docs to cross-check. Never modify
+   anything in this phase — this is a read-only phase. Land the
+   explorers' findings as `## Findings` bullets, each citing a concrete
+   `repo/path/file.ext:line`.
 4. Read-time KB check: for every knowledge doc you consulted in step 1,
    check its `stale_after:` against today and check it against what
    exploration actually found. If it's past `stale_after` or contradicts
@@ -34,8 +37,8 @@ WORKFLOW.md).
 
 ## Exit
 
-All questions answered, and findings are sufficient to write a plan. Set
-`status: planning`.
+All questions answered, and findings are sufficient to write a plan.
+`scripts/event.sh <work-id> status from=context to=planning`.
 
 ## Hard rules
 

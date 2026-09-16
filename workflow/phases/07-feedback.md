@@ -12,9 +12,8 @@ and the human explicitly asked to reopen it, for one of two reasons:
   before the MR merges.
 
 The reopen already happened per `workflow/WORKFLOW.md` § Feedback: the
-folder is still under `work/active/`, `status: feedback`, Activity line
-`- YYYY-MM-DD — reopened: <MR feedback | change request> (round <n>)`
-appended.
+folder is still under `work/active/` and `scripts/event.sh <work-id>
+feedback round=<n> reason=<mr|human>` set `status: feedback`.
 
 ## Steps
 
@@ -53,7 +52,8 @@ appended.
    `status: in-review`, dispatch the plan-review subagent, and run the
    gate procedure in `workflow/WORKFLOW.md` § Review gates — auto-approval
    and the loop policy apply exactly as at any gate-2 visit.
-6. On approval, set `status: executing` and run the normal pipeline:
+6. On approval, `scripts/event.sh <work-id> status from=feedback
+   to=executing` and run the normal pipeline:
    `phases/04-execute.md` for the new steps, `phases/05-verify.md` in
    full (quality gates AND a fresh diff review over the whole branch
    diff), `phases/06-deliver.md` with its reopened-item variant — push
@@ -62,8 +62,9 @@ appended.
 
 If triage finds NOTHING to address (every thread is answer-only): skip
 steps 4-5, present the drafted replies to the human, post them on
-approval, append `- YYYY-MM-DD — feedback round <n>: replies only, no code
-change`, remove the worktrees again, and return to `awaiting-merge`.
+approval, append `scripts/event.sh <work-id> status from=feedback
+to=awaiting-merge -- "feedback round <n>: replies only, no code change"`,
+remove the worktrees again.
 
 ## Exit
 

@@ -28,6 +28,9 @@ Any other agent: dispatch a subagent with this brief verbatim.
 - Constraints: the repo's `knowledge/repos/<id>/conventions.md` content
   (or a pointer to it), plus anything the plan's approach requires.
 - What NOT to touch, when parallel siblings share the worktree.
+- The report path
+  (`work/<...>/<work-id>/trace/reports/04-implementer-step<k>-<n>.md`) —
+  the ONE file outside the worktree you write: your report.
 
 ## Method
 
@@ -41,7 +44,11 @@ Any other agent: dispatch a subagent with this brief verbatim.
 4. Self-review your diff before reporting: completeness against the step,
    no stray files, no leftover debug output, no scope creep.
 
-## Report (reply — you write no report files)
+## Report (write it to the report path, then reply with the same content)
+
+Write the full report to the report path from your brief (create nothing
+else outside the worktree), then reply with the same content — the
+orchestrator acts on the reply; the file is the trace.
 
 - **Status:** DONE | BLOCKED | NEEDS_CONTEXT
 - Files changed (each with one line on what changed)
@@ -56,8 +63,9 @@ problem: report it, don't improvise around it.
 
 ## Hard rules
 
-- ONE step, ONE worktree. Never write outside the worktree path; never
-  touch files the step doesn't name without reporting it as a deviation.
+- ONE step, ONE worktree. Never write outside the worktree path except
+  the report path from your brief; never touch files the step doesn't
+  name without reporting it as a deviation.
 - NEVER commit, push, branch, or otherwise touch git state — the
   orchestrator reviews your diff and commits. (Read-only git like
   `git diff`/`git status` is fine.)

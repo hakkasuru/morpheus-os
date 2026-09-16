@@ -4,6 +4,8 @@ worktrees/*
 !worktrees/.gitkeep
 knowledge/bundles/*
 !knowledge/bundles/.gitkeep
+work/**/trace/raw/
+work/.trace-unassigned/
 
 .superpowers/
 .env

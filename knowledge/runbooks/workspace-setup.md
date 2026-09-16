@@ -4,7 +4,7 @@ title: "Workspace setup"
 description: "First-time setup of a freshly cloned workspace: prerequisites, remotes (template as push-disabled upstream, your repo as origin), repo onboarding, preferences interview, validation."
 status: stable
 created: 2026-08-01
-updated: 2026-09-14
+updated: 2026-09-15
 stale_after: null # YYYY-MM-DD — re-verify after this date
 tags: [setup, onboarding, preferences, upstream]
 repo: null
@@ -97,6 +97,11 @@ asks for setup help.
    ```
    scripts/validate.sh
    ```
+
+   and `scripts/validate.sh --harness` (the template self-check). Restart
+   the session once so the project hooks (`.claude/settings.json`,
+   `.github/hooks/`) load — they build the session brief and capture
+   traces.
 
 7. **[destructive — confirm]** Suggest a first commit of the personalized
    workspace, and — since step 2 guarantees `origin` is the human's own

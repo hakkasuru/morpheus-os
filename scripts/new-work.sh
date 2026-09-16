@@ -13,6 +13,8 @@ Usage: new-work.sh <task|story|epic> "<title>" [--parent <epic-folder-path>]
 
 Create work/backlog/<ID>/ containing a single seeded task.md (task, story) or
 epic.md (epic). Phase docs are NOT pre-created — each phase creates its own.
+The seeded doc is stamped with harness: (template VERSION+commit) and
+workspace_rev:.
 
   ID = T-|S-|E- + UTC YYYYMMDD + "-" + slugified title
 
@@ -110,6 +112,10 @@ id_e=$(sed_escape "$id")
 type_e=$(sed_escape "$type")
 title_e=$(sed_escape "$title_yaml")
 date_e=$(sed_escape "$today")
+harness=$(mos_harness_version)
+wsrev=$(mos_workspace_rev)
+harness_e=$(sed_escape "$harness")
+wsrev_e=$(sed_escape "$wsrev")
 
 mkdir -p "$dest" || mos_die "cannot create $dest"
 if ! sed \
@@ -118,6 +124,8 @@ if ! sed \
   -e "s|{{TITLE}}|$title_e|g" \
   -e "s|{{DATE}}|$date_e|g" \
   -e "s|{{STATUS}}|intake|g" \
+  -e "s|{{HARNESS}}|$harness_e|g" \
+  -e "s|{{WORKSPACE_REV}}|$wsrev_e|g" \
   "$template" >"$dest/$doc" 2>/dev/null; then
   rm -f "$dest/$doc"
   rmdir "$dest" 2>/dev/null || true
@@ -129,4 +137,6 @@ if grep -qE '\{\{[A-Za-z_]+\}\}' "$dest/$doc"; then
   mos_warn "$dest/$doc still contains unsubstituted {{TOKENS}} — check $template"
 fi
 
+: >"$dest/events.log"
+"$SCRIPT_DIR/event.sh" "$dest" created >/dev/null
 printf 'created: %s\n' "$dest/$doc"

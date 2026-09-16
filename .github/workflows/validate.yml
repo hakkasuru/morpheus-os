@@ -1,0 +1,49 @@
+name: validate
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: validate.sh (workspace + --harness)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # The pinned container is the strict (info-level) shellcheck gate: the
+      # same version contributors run locally. validate.sh --harness also runs
+      # the runner image's own shellcheck, but only at warning severity, so a
+      # version difference in info-level heuristics cannot turn CI red.
+      - name: shellcheck (pinned container)
+        run: docker run --rm -e LANG=C.UTF-8 -v "$PWD":/w -w /w koalaman/shellcheck:stable scripts/*.sh
+      - run: scripts/validate.sh
+      - run: scripts/validate.sh --harness
+
+  bash-3-2:
+    name: bash 3.2 syntax
+    runs-on: ubuntu-latest
+    steps:
+      # Full history is not required by the self-check (it builds its own
+      # throwaway git repo); kept for parity with the validate job.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: bash -n under bash:3.2
+        run: |
+          docker run --rm -v "$PWD":/w -w /w bash:3.2 bash -c '
+            rc=0
+            for f in scripts/*.sh; do
+              bash -n "$f" || { echo "bash 3.2 syntax error: $f"; rc=1; }
+            done
+            exit $rc'
+      # The full self-check under the oldest supported bash (macOS ships
+      # 3.2.57). The image is Alpine, so git and perl are installed first and
+      # git needs an identity for the smoke workspace's commits.
+      - name: validate.sh --harness under bash:3.2
+        run: |
+          docker run --rm -v "$PWD":/w -w /w bash:3.2 bash -c 'apk add --no-cache git perl >/dev/null 2>&1 && git config --global user.email ci@example.invalid && git config --global user.name ci && scripts/validate.sh --harness'
