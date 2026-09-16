@@ -29,7 +29,7 @@ Options:
                semver and matches the newest CHANGELOG heading, every
                script parses (bash -n), shellcheck when installed, and an
                end-to-end smoke of new-work/stamp/event/trace-capture/
-               scorecard in a throwaway copy.
+               scorecard/export-experience in a throwaway copy.
 EOF
 }
 
@@ -972,6 +972,143 @@ line two" 2>&1) && smoke_fail "event.sh must reject a newline in prose"
   check; [ -e "$w/work/escape-copilot-cp-sub-2.jsonl" ] && smoke_fail "a session id with ../ must not be used as a path component"
   rm -f "$w/work/escape-copilot-cp-sub-2.jsonl"
   rm -rf "$w/copilot-home"
+
+  # --- export-experience.sh core (proposer-loop plan, Task 1) ---
+  store=$(mktemp -d "${TMPDIR:-/tmp}/mos-store.XXXXXX"); store=$(cd "$store" && pwd -P)
+  ws=$(basename "$w")
+  # two done fixture items sharing one real session transcript; A also has a raw subagent copy
+  sess="$w/sess-shared.jsonl"
+  # shellcheck disable=SC2031 # false positive: id is set once above, never inside a subshell (see the earlier SC2031 notes)
+  sed "s|__ID__|$id|g" "$w/scripts/fixtures/transcript.jsonl" >"$sess"
+  for fx in T-20260101-expa T-20260101-expb; do
+    mkdir -p "$w/work/done/$fx/trace/raw"
+    printf -- '---\nid: %s\ntype: task\ntitle: "%s"\nstatus: done\nrepos: [demo]\nepic: null\ncreated: 2026-01-01\nupdated: 2026-01-02\nmr: https://example.invalid/mr/5\nharness: 0.9.0+abcdef1\nworkspace_rev: abcdef1\n---\n\n## Activity\n\n- 2026-01-01 — created\n' "$fx" "$fx" >"$w/work/done/$fx/task.md"
+    printf 'session_id\ttranscript_path\tfirst_seen\tlast_seen\nshared-1\t%s\t2026-01-01T00:00:00Z\t2026-01-01T00:10:00Z\n' "$sess" >"$w/work/done/$fx/trace/sessions.tsv"
+  done
+  cp "$sess" "$w/work/done/T-20260101-expa/trace/raw/agent-fx.jsonl"
+  # The listing covers the workspace ROOT too, so a stray items/ or
+  # manifest.tsv written next to work/ would fail this as loudly as a
+  # changed file would.
+  before=$(cd "$w" && { find work scripts config -type f | LC_ALL=C sort | xargs ls -l | awk '{print $5, $6, $7, $8, $9}'; find . -maxdepth 1 -mindepth 1 | LC_ALL=C sort; })
+  out=$(cd "$w" && scripts/export-experience.sh --dest "$store" 2>&1; echo "rc=$?")
+  check; printf '%s' "$out" | grep -q '^rc=0$' || smoke_fail "export exits 0, got: $out"
+  after=$(cd "$w" && { find work scripts config -type f | LC_ALL=C sort | xargs ls -l | awk '{print $5, $6, $7, $8, $9}'; find . -maxdepth 1 -mindepth 1 | LC_ALL=C sort; })
+  smoke_assert_eq "$after" "$before" "export is read-only on the workspace"
+  smoke_assert_file "$store/$ws/manifest.tsv"
+  smoke_assert_grep "$store/$ws/manifest.tsv" '^id	type	status	harness	parent	source_path	exported_at	sessions_copied	sessions_missing	store_version$'
+  smoke_assert_eq "$(grep -c . "$store/$ws/manifest.tsv")" 4 "manifest: header + 3 items (smoke item + 2 fixtures)"
+  smoke_assert_grep "$store/$ws/manifest.tsv" "^T-20260101-expa	task	done	0\.9\.0\+abcdef1	-	.*	[0-9T:Z-]+	1	0	1$"
+  # shellcheck disable=SC2031 # false positive: id is set once above, never inside a subshell (see the earlier SC2031 notes)
+  smoke_assert_grep "$store/$ws/manifest.tsv" "^$id	task	done	[0-9.]+\+[0-9a-f]+	-	.*	[0-9T:Z-]+	0	2	1$"
+  smoke_assert_file "$store/$ws/items/T-20260101-expa/task.md"
+  smoke_assert_file "$store/$ws/items/T-20260101-expa/trace/raw/agent-fx.jsonl"
+  # shellcheck disable=SC2031 # false positive: id is set once above, never inside a subshell (see the earlier SC2031 notes)
+  smoke_assert_file "$store/$ws/items/$id/events.log"
+  smoke_assert_eq "$(find "$store/$ws/sessions" -maxdepth 1 -type f | grep -c .)" 1 "one shared session copied once"
+  smoke_assert_file "$store/$ws/sessions/shared-1.jsonl"
+  smoke_assert_grep "$store/$ws/items/T-20260101-expb/trace/sessions.tsv" "^shared-1	$store/$ws/sessions/shared-1\.jsonl	"
+  # shellcheck disable=SC2031 # false positive: id is set once above, never inside a subshell (see the earlier SC2031 notes)
+  smoke_assert_grep "$store/$ws/items/$id/trace/sessions.tsv" "^smoke-session-0001	$w/transcript\.jsonl	"   # missing at source: pointer unchanged
+  # re-export is idempotent for items (manifest row count unchanged)
+  (cd "$w" && scripts/export-experience.sh --dest "$store" >/dev/null)
+  smoke_assert_eq "$(grep -c . "$store/$ws/manifest.tsv")" 4 "re-export keeps one manifest row per item"
+  # explicit id restricts; --workspace-name renames the store folder
+  (cd "$w" && scripts/export-experience.sh --dest "$store" --workspace-name alt T-20260101-expb >/dev/null)
+  smoke_assert_eq "$(grep -c . "$store/alt/manifest.tsv")" 2 "explicit id: header + 1 row"
+  check; [ -d "$store/alt/items/T-20260101-expa" ] && smoke_fail "explicit id must not export other items"
+  out=$(cd "$w" && scripts/export-experience.sh 2>&1 || true)
+  check; printf '%s' "$out" | grep -q -- '--dest' || smoke_fail "missing --dest must be a usage error, got: $out"
+  out=$(cd "$w" && scripts/export-experience.sh --dest "$store/does-not-exist" 2>&1 || true)
+  check; printf '%s' "$out" | grep -q 'does not exist' || smoke_fail "missing destination must die, got: $out"
+
+  # --- export-experience.sh sweep, dry-run, snapshots (Task 2) ---
+  smoke_assert_eq "$(find "$store/$ws" -maxdepth 1 -name 'scorecard-*.tsv' | grep -c .)" 2 "two exports → two scorecard snapshots"
+  smoke_assert_eq "$(find "$store/$ws" -maxdepth 1 -name 'summary-*.tsv' | grep -c .)" 2 "two summary snapshots"
+  smoke_assert_file "$store/$ws/config/preferences.md"
+  latest=$(find "$store/$ws" -maxdepth 1 -name 'scorecard-*.tsv' | LC_ALL=C sort | tail -1)
+  smoke_assert_eq "$(head -1 "$latest" | cut -f1-3)" "id	type	harness" "scorecard snapshot is scorecard.sh output"
+  smoke_assert_eq "$(grep -c . "$latest")" 4 "scorecard snapshot: header + 3 items"
+  # dry run writes nothing
+  store2=$(mktemp -d "${TMPDIR:-/tmp}/mos-store.XXXXXX"); store2=$(cd "$store2" && pwd -P)
+  out=$(cd "$w" && scripts/export-experience.sh --dest "$store2" --dry-run)
+  check; printf '%s' "$out" | grep -q "would export T-20260101-expa" || smoke_fail "dry-run lists items, got: $out"
+  smoke_assert_eq "$(find "$store2" -mindepth 1 | grep -c .)" 0 "dry-run writes nothing"
+  # planted token aborts before any write; --ignore-sweep exports with a warning
+  mkdir -p "$w/work/done/T-20260101-leak"
+  printf -- '---\nid: T-20260101-leak\ntype: task\ntitle: "leak"\nstatus: done\nrepos: []\nepic: null\ncreated: 2026-01-01\nupdated: 2026-01-01\nmr: null\n---\n\n## Activity\n\n- 2026-01-01 — created\n' >"$w/work/done/T-20260101-leak/task.md"
+  printf 'aws_key = AKIAABCDEFGHIJKLMNOP\n' >"$w/work/done/T-20260101-leak/01-context.md"
+  out=$(cd "$w" && scripts/export-experience.sh --dest "$store2" 2>&1; echo "rc=$?")
+  check; printf '%s' "$out" | grep -q '^rc=1$' || smoke_fail "sweep hit exits 1, got: $out"
+  check; printf '%s' "$out" | grep -q 'T-20260101-leak/01-context.md:1' || smoke_fail "sweep names file:line, got: $out"
+  # the report is file:line only — it must never echo the secret back
+  check; printf '%s' "$out" | grep -q 'AKIAABCDEFGHIJKLMNOP' && smoke_fail "sweep output must not repeat the matched secret, got: $out"
+  smoke_assert_eq "$(find "$store2" -mindepth 1 | grep -c .)" 0 "sweep hit writes nothing"
+  out=$(cd "$w" && scripts/export-experience.sh --dest "$store2" --ignore-sweep 2>&1; echo "rc=$?")
+  check; printf '%s' "$out" | grep -q '^rc=0$' || smoke_fail "--ignore-sweep exports, got: $out"
+  check; printf '%s' "$out" | grep -qi 'warning' || smoke_fail "--ignore-sweep must warn"
+  smoke_assert_file "$store2/$ws/items/T-20260101-leak/01-context.md"
+  # destination inside the workspace is refused
+  out=$(cd "$w" && scripts/export-experience.sh --dest "$w/work" 2>&1 || true)
+  check; printf '%s' "$out" | grep -q 'inside this workspace' || smoke_fail "dest inside workspace must be refused, got: $out"
+  # summary line
+  out=$(cd "$w" && scripts/export-experience.sh --dest "$store2" --ignore-sweep T-20260101-expa 2>&1)
+  check; printf '%s' "$out" | grep -Eq 'exported 1 item\(s\).*session rows resolved 1, missing 0.*scorecard-[0-9T]+Z(_[0-9]+)?\.tsv' || smoke_fail "summary line shape, got: $out"
+
+  # --- export-experience.sh containment, scope and explicit ids (final review) ---
+  rm -rf "$w/work/done/T-20260101-leak"   # from here on the sweep is clean again
+  store3=$(mktemp -d "${TMPDIR:-/tmp}/mos-store.XXXXXX"); store3=$(cd "$store3" && pwd -P)
+  # (C1) the guard runs on the real write target: a --dest whose <name> subfolder
+  # IS this workspace must be refused, and nothing may be written into it.
+  out=$(cd "$w" && scripts/export-experience.sh --dest "$(dirname "$w")" 2>&1; echo "rc=$?")
+  check; printf '%s' "$out" | grep -q '^rc=1$' || smoke_fail "a dest resolving onto the workspace must exit 1, got: $out"
+  check; printf '%s' "$out" | grep -q 'inside this workspace' || smoke_fail "a dest resolving onto the workspace must be refused, got: $out"
+  check; [ -e "$w/manifest.tsv" ] && smoke_fail "a refused export must not write manifest.tsv into the workspace root"
+  check; [ -e "$w/items" ] && smoke_fail "a refused export must not write items/ into the workspace root"
+  out=$(cd "$w" && scripts/export-experience.sh --dest "$store3" --workspace-name .. 2>&1; echo "rc=$?")
+  check; printf '%s' "$out" | grep -q '^rc=1$' || smoke_fail "--workspace-name .. must exit 1, got: $out"
+  check; printf '%s' "$out" | grep -q 'must match' || smoke_fail "--workspace-name .. must be refused, got: $out"
+  # (I4a) an epic and its child export as two flat items; the child names its parent
+  mkdir -p "$w/work/done/E-20260101-ep/S-20260101-kid"
+  printf -- '---\nid: E-20260101-ep\ntype: epic\ntitle: "ep"\nstatus: done\nrepos: [demo]\nepic: null\ncreated: 2026-01-01\nupdated: 2026-01-02\nmr: null\nharness: 0.9.0+abcdef1\n---\n\n## Activity\n\n- 2026-01-01 — created\n' >"$w/work/done/E-20260101-ep/epic.md"
+  printf -- '---\nid: S-20260101-kid\ntype: story\ntitle: "kid"\nstatus: done\nrepos: [demo]\nepic: E-20260101-ep\ncreated: 2026-01-01\nupdated: 2026-01-02\nmr: null\nharness: 0.9.0+abcdef1\n---\n\n## Activity\n\n- 2026-01-01 — created\n' >"$w/work/done/E-20260101-ep/S-20260101-kid/task.md"
+  (cd "$w" && scripts/export-experience.sh --dest "$store3" >/dev/null)
+  smoke_assert_file "$store3/$ws/items/S-20260101-kid/task.md"
+  check; [ -e "$store3/$ws/items/E-20260101-ep/S-20260101-kid" ] && smoke_fail "an epic's copy must not carry its child item"
+  smoke_assert_grep "$store3/$ws/manifest.tsv" '^S-20260101-kid	story	done	0\.9\.0\+abcdef1	E-20260101-ep	'
+  smoke_assert_grep "$store3/$ws/manifest.tsv" '^E-20260101-ep	epic	done	'
+  # (I4b) active items stay out until --include-active asks for them
+  mkdir -p "$w/work/active/T-20260101-act"
+  printf -- '---\nid: T-20260101-act\ntype: task\ntitle: "act"\nstatus: executing\nrepos: [demo]\nepic: null\ncreated: 2026-01-01\nupdated: 2026-01-02\nmr: null\nharness: 0.9.0+abcdef1\n---\n\n## Activity\n\n- 2026-01-01 — created\n' >"$w/work/active/T-20260101-act/task.md"
+  printf '2026-01-01T00:00:00Z\tcreated\ttype=task\n' >"$w/work/active/T-20260101-act/events.log"
+  (cd "$w" && scripts/export-experience.sh --dest "$store3" >/dev/null)
+  check; [ -e "$store3/$ws/items/T-20260101-act" ] && smoke_fail "an active item must not export without --include-active"
+  (cd "$w" && scripts/export-experience.sh --dest "$store3" --include-active >/dev/null)
+  smoke_assert_file "$store3/$ws/items/T-20260101-act/task.md"
+  smoke_assert_file "$store3/$ws/items/T-20260101-act/events.log"
+  # (I4c) an unknown explicit id is a runtime error, not an empty export
+  out=$(cd "$w" && scripts/export-experience.sh --dest "$store3" T-does-not-exist 2>&1; echo "rc=$?")
+  check; printf '%s' "$out" | grep -q '^rc=1$' || smoke_fail "an unknown id must exit 1, got: $out"
+  check; printf '%s' "$out" | grep -q 'no work item' || smoke_fail "an unknown id must say so, got: $out"
+  # (M1) an explicit id outside the selected states is refused, not exported
+  mkdir -p "$w/work/backlog/T-20260101-bk"
+  printf -- '---\nid: T-20260101-bk\ntype: task\ntitle: "bk"\nstatus: intake\nrepos: [demo]\nepic: null\ncreated: 2026-01-01\nupdated: 2026-01-01\nmr: null\nharness: 0.9.0+abcdef1\n---\n\n## Activity\n\n- 2026-01-01 — created\n' >"$w/work/backlog/T-20260101-bk/task.md"
+  out=$(cd "$w" && scripts/export-experience.sh --dest "$store3" T-20260101-bk 2>&1; echo "rc=$?")
+  check; printf '%s' "$out" | grep -q '^rc=1$' || smoke_fail "a backlog id must exit 1, got: $out"
+  check; printf '%s' "$out" | grep -q 'only done items' || smoke_fail "a backlog id must be refused, got: $out"
+  check; [ -e "$store3/$ws/items/T-20260101-bk" ] && smoke_fail "a refused explicit id must not be exported"
+  rm -rf "$store" "$store2" "$store3" "$w/work/done/T-20260101-expa" "$w/work/done/T-20260101-expb" "$w/work/done/T-20260101-leak" "$w/work/done/E-20260101-ep" "$w/work/active/T-20260101-act" "$w/work/backlog/T-20260101-bk" "$sess"
+
+  # --- proposer-loop docs (Task 3) ---
+  smoke_assert_grep "$(mos_root)/knowledge/runbooks/export-experience.md" '^type: Runbook$'
+  smoke_assert_grep "$(mos_root)/knowledge/runbooks/index.md" 'export-experience.md'
+  smoke_assert_file "$(mos_root)/.claude/commands/export-experience.md"
+  smoke_assert_file "$(mos_root)/.github/prompts/export-experience.prompt.md"
+  smoke_assert_grep "$(mos_root)/knowledge/decisions/proposer-loop-separate-repo.md" '^type: Decision$'
+  smoke_assert_grep "$(mos_root)/knowledge/decisions/index.md" 'proposer-loop-separate-repo.md'
+  smoke_assert_grep "$(mos_root)/workflow/WORKFLOW.md" 'export-experience.sh'
+  smoke_assert_grep "$(mos_root)/README.md" 'export-experience'
+  smoke_assert_eq "$(head -1 "$(mos_root)/VERSION")" "1.1.0" "VERSION is 1.1.0"
+  smoke_assert_grep "$(mos_root)/CHANGELOG.md" '^## 1\.1\.0 — [0-9]{4}-[0-9]{2}-[0-9]{2}$'
 
   : # Keep this bare `:` as the LAST statement of run_smoke. Several
     # assertions here are "should NOT match" greps whose expected miss exits
