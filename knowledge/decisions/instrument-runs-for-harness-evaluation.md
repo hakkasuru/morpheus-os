@@ -2,14 +2,14 @@
 type: Decision
 title: "Instrument every work item as a run record for harness evaluation"
 description: "Stamp each item with the template version, log structured events beside the Activity prose, keep subagent briefs/reports and raw transcripts per item, and extract a scorecard — so production runs can evaluate harness changes Meta-Harness style."
-status: draft
+status: stable
 created: 2026-09-15
-updated: 2026-09-15
+updated: 2026-09-16
 stale_after: null # YYYY-MM-DD — re-verify after this date
 tags: [harness, evaluation, meta-harness, run-record, scorecard]
 repo: null
 generated_by: claude-code # agent name when agent-authored
-verified: null # YYYY-MM-DD — set when a human reviews an agent-authored doc
+verified: 2026-09-16
 ---
 
 # Instrument every work item as a run record for harness evaluation

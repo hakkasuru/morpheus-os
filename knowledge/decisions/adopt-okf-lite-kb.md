@@ -4,12 +4,12 @@ title: "Adopt OKF-lite for the knowledge base"
 description: "Use a lightweight, OKF-inspired markdown+frontmatter convention for all knowledge-base docs."
 status: stable
 created: 2026-08-01
-updated: 2026-08-04
+updated: 2026-09-16
 stale_after: null # YYYY-MM-DD — re-verify after this date
 tags: [knowledge-base, format, okf-lite]
 repo: null
 generated_by: null # agent name when agent-authored
-verified: null # YYYY-MM-DD — set when a human reviews an agent-authored doc
+verified: 2026-09-16
 ---
 
 # Adopt OKF-lite for the knowledge base
