@@ -120,6 +120,11 @@ UNASSIGNED="$root/work/.trace-unassigned"
 # fragment "tool matches toolName/toolArgs/tool_call style keys.
 TOOL_MARKER_CLAUDE='"type": ?"tool_use"'
 TOOL_MARKER_COPILOT='"tool'
+# A MUTATING tool call: the only kind that attributes a session to an item
+# already in work/done/. Reads, greps and scorecard runs over finished items
+# are analysis, not the item's run. Covers Claude Code tool names and the
+# common Copilot file-edit tool names; `event.sh <id>` counts everywhere.
+MUTATING_ERE='"(name|tool|toolName|tool_name)": ?"(Write|Edit|MultiEdit|NotebookEdit|create_file|edit_file|write_file|str_replace_editor|apply_patch)"'
 
 # safe_path_id <value> — reject an id that would escape the directory it is
 # pasted into ("/" or ".." anywhere). Session and subagent ids come from the
@@ -160,13 +165,20 @@ attribute() {
     return 0
   fi
   ids=$(paste -sd ' ' "$idfile")
-  grep -F -f "$idfile" "$transcript" 2>/dev/null | grep -E -- "$marker" | awk -v ids="$ids" '
+  grep -F -f "$idfile" "$transcript" 2>/dev/null | grep -E -- "$marker" | awk -v ids="$ids" -v mut="$MUTATING_ERE" '
 BEGIN { n = split(ids, a, " ") }
 {
   for (i = 1; i <= n; i++) {
     id = a[i]
     if (hit[id]) continue
-    if ($0 ~ ("work/(backlog|active|done)/([^/]+/)?" id "/") || $0 ~ ("worktrees/[^/\"]+--" id)) {
+    # in flight: any tool call on the item or its worktree attributes
+    if ($0 ~ ("work/(backlog|active)/([^/]+/)?" id "/") || $0 ~ ("worktrees/[^/\"]+--" id)) {
+      hit[id] = 1
+      print id
+      continue
+    }
+    # done: only a mutating call on the item, or an event logged for it
+    if (($0 ~ ("work/done/([^/]+/)?" id "/") && $0 ~ mut) || $0 ~ ("event\\.sh[^\"]*[ /]" id "([ \"]|$)")) {
       hit[id] = 1
       print id
     }

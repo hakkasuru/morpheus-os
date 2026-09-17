@@ -664,6 +664,23 @@ line two" 2>&1) && smoke_fail "event.sh must reject a newline in prose"
   (cd "$w" && scripts/trace-capture.sh --hook stop <hook-mention.json)
   check; grep -q 'smoke-session-0002' "$SMOKE_ITEM/trace/sessions.tsv" && smoke_fail "mention-only transcript was attributed"
   smoke_assert_grep "$w/work/.trace-unassigned/sessions.tsv" '^smoke-session-0002	'
+  # a DONE item is attributed only on a mutating call (Write/Edit) or an event.sh call — never on reads
+  dfx=T-20260101-donefx; mkdir -p "$w/work/done/$dfx"
+  printf -- '---\nid: %s\ntype: task\ntitle: "done fixture"\nstatus: done\nrepos: [demo]\ncreated: 2026-01-01\nupdated: 2026-01-02\n---\n' "$dfx" >"$w/work/done/$dfx/task.md"
+  printf '%s\n' "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"tool_use\",\"id\":\"t1\",\"name\":\"Read\",\"input\":{\"file_path\":\"$w/work/done/$dfx/task.md\"}}]}}" >"$w/done-read.jsonl"
+  sed "s|__TRANSCRIPT__|$w/done-read.jsonl|;s|smoke-session-0001|smoke-session-0003|" "$w/scripts/fixtures/hook-stop.json" >"$w/hook-done-read.json"
+  (cd "$w" && scripts/trace-capture.sh --hook stop <hook-done-read.json)
+  check; [ -f "$w/work/done/$dfx/trace/sessions.tsv" ] && smoke_fail "a read-only touch attributed a session to a done item"
+  smoke_assert_grep "$w/work/.trace-unassigned/sessions.tsv" '^smoke-session-0003	'
+  printf '%s\n' "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"tool_use\",\"id\":\"t2\",\"name\":\"Edit\",\"input\":{\"file_path\":\"$w/work/done/$dfx/04-diff-review.md\"}}]}}" >"$w/done-edit.jsonl"
+  sed "s|__TRANSCRIPT__|$w/done-edit.jsonl|;s|smoke-session-0001|smoke-session-0004|" "$w/scripts/fixtures/hook-stop.json" >"$w/hook-done-edit.json"
+  (cd "$w" && scripts/trace-capture.sh --hook stop <hook-done-edit.json)
+  smoke_assert_grep "$w/work/done/$dfx/trace/sessions.tsv" '^smoke-session-0004	'
+  printf '%s\n' "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"tool_use\",\"id\":\"t3\",\"name\":\"Bash\",\"input\":{\"command\":\"scripts/event.sh $dfx feedback round=1\"}}]}}" >"$w/done-event.jsonl"
+  sed "s|__TRANSCRIPT__|$w/done-event.jsonl|;s|smoke-session-0001|smoke-session-0005|" "$w/scripts/fixtures/hook-stop.json" >"$w/hook-done-event.json"
+  (cd "$w" && scripts/trace-capture.sh --hook stop <hook-done-event.json)
+  smoke_assert_grep "$w/work/done/$dfx/trace/sessions.tsv" '^smoke-session-0005	'
+  rm -rf "$w/work/done/$dfx" "$w"/done-*.jsonl "$w"/hook-done-*.json
   # garbage payload: exit 0, logged
   out=$(cd "$w" && printf 'not json' | scripts/trace-capture.sh --hook stop; echo "rc=$?")
   smoke_assert_eq "$out" "rc=0" "garbage payload still exits 0"

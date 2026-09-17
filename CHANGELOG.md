@@ -6,6 +6,16 @@ pulling (`git pull upstream main`). Machinery details live in `git log`.
 
 Every entry answers: **Action needed after pulling?**
 
+## 1.1.3 — 2026-09-17
+
+- **Finished items no longer collect session pointers from sessions that only
+  read them** (`scripts/trace-capture.sh`). The Stop/SubagentStop hooks attribute
+  a session to an item under `work/done/` only on a mutating tool call on it
+  (Write/Edit) or an `event.sh <id>` call; reads, greps and scorecard runs land
+  in `work/.trace-unassigned/` instead. In-flight items are unchanged. Action
+  needed after pulling? No — but expect `trace/sessions.tsv` under done items to
+  stop churning; rows already written stay.
+
 ## 1.1.2 — 2026-09-17
 
 - **Legacy items stay legacy-sourced in the scorecard** (`scripts/scorecard.sh`).
