@@ -825,6 +825,19 @@ line two" 2>&1) && smoke_fail "event.sh must reject a newline in prose"
   smoke_assert_eq "$(cell harness)" - "legacy harness empty"
   check; printf '%s' "$(cell docs_missing)" | grep -q 'impl-review' || smoke_fail "legacy docs_missing lists impl-review, got '$(cell docs_missing)'"
   check; printf '%s' "$(cell docs_missing)" | grep -q 'events' || smoke_fail "legacy docs_missing lists events"
+  # a retroactive review logged on a legacy-stamped item must not flip it to events sourcing
+  sed -i.bak "s/^type: task$/type: task\\
+harness: 0.0.0+abc1234/" "$w/work/done/T-20260101-legacy/task.md" && rm -f "$w/work/done/T-20260101-legacy/task.md.bak"
+  printf "2026-01-04T00:00:00Z\tdiff-review\trepo=demo\tverdict=PASS\tfindings=0\n" >"$w/work/done/T-20260101-legacy/events.log"
+  out=$(cd "$w" && scripts/scorecard.sh T-20260101-legacy)
+  row=$(printf "%s\n" "$out" | sed -n 2p)
+  smoke_assert_eq "$(cell source)" legacy "0.0.0-stamped item with an events.log stays legacy-sourced"
+  smoke_assert_eq "$(cell g1_rounds)" 3 "legacy g1_rounds survive a retro events.log"
+  smoke_assert_eq "$(cell changes_requested)" 1 "legacy changes_requested survive a retro events.log"
+  sed -i.bak "s/^harness: 0.0.0+abc1234$/harness: 1.0.0+abc1234/" "$w/work/done/T-20260101-legacy/task.md" && rm -f "$w/work/done/T-20260101-legacy/task.md.bak"
+  out=$(cd "$w" && scripts/scorecard.sh T-20260101-legacy)
+  row=$(printf "%s\n" "$out" | sed -n 2p)
+  smoke_assert_eq "$(cell source)" events "1.0.0-stamped item with an events.log is events-sourced"
   rm -rf "$w/work/done/T-20260101-legacy"
 
   # --- scorecard --summary + status line (Task 10) ---

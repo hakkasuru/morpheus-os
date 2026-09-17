@@ -6,6 +6,15 @@ pulling (`git pull upstream main`). Machinery details live in `git log`.
 
 Every entry answers: **Action needed after pulling?**
 
+## 1.1.2 — 2026-09-17
+
+- **Legacy items stay legacy-sourced in the scorecard** (`scripts/scorecard.sh`).
+  An item stamped before the run record (no `harness:` or the backfill's
+  `0.0.0+<commit>`) is no longer switched to `source: events` when an
+  `events.log` appears — a retroactive review logged on a done legacy item
+  used to zero its gate rounds and changes-requested counts. Action needed
+  after pulling? No; re-run `scripts/scorecard.sh` if you keep snapshots.
+
 ## 1.1.1 — 2026-09-17
 
 - **The pre-delivery diff review covers every delivery target, not only

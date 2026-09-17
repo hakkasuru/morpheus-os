@@ -229,8 +229,14 @@ row_for() {
   repos=$(fm "$doc" repos | tr -d '[] ' ); status=$(fm "$doc" status); created=$(fm "$doc" created)
   instrumented=no
   # -f, not -s: an empty events.log is still an instrumented item (validate.sh
-  # decides the same way).
-  [ -f "$dir/events.log" ] && instrumented=yes
+  # decides the same way). Items stamped before the run record (no harness or
+  # the backfill's 0.0.0+<commit>) stay legacy even when an events.log appears:
+  # a retroactive review logged on a done legacy item is one event, not the
+  # item's history, and sourcing from it would zero every doc-derived column.
+  case "$harness" in
+    ""|-|0.0.0|0.0.0+*) : ;;
+    *) [ -f "$dir/events.log" ] && instrumented=yes ;;
+  esac
   if [ "$instrumented" = yes ]; then metrics=$(events_metrics "$dir/events.log"); source=events
   else metrics=$(legacy_metrics "$dir" "$doc"); source=legacy; fi
   # load name=value lines into like-named shell variables (names are fixed above)
