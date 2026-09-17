@@ -20,7 +20,9 @@ updated: {{DATE}}
 
 ## Diff Review
 
-- Verdict: <PASS/FAIL per repo — from `04-diff-review.md`>
+- Verdict: <PASS/FAIL per delivery target — from `04-diff-review.md`; one
+  line per target, including any target outside a registered repo. Never
+  `N/A`: a target that received a change has a review object.>
 - Carried MINOR findings: <list, or —>
 
 ## Verdict

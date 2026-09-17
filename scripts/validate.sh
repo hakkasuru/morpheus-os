@@ -1107,8 +1107,8 @@ line two" 2>&1) && smoke_fail "event.sh must reject a newline in prose"
   smoke_assert_grep "$(mos_root)/knowledge/decisions/index.md" 'proposer-loop-separate-repo.md'
   smoke_assert_grep "$(mos_root)/workflow/WORKFLOW.md" 'export-experience.sh'
   smoke_assert_grep "$(mos_root)/README.md" 'export-experience'
-  smoke_assert_eq "$(head -1 "$(mos_root)/VERSION")" "1.1.0" "VERSION is 1.1.0"
-  smoke_assert_grep "$(mos_root)/CHANGELOG.md" '^## 1\.1\.0 — [0-9]{4}-[0-9]{2}-[0-9]{2}$'
+  smoke_assert_eq "$(head -1 "$(mos_root)/VERSION")" "$(grep -m1 -E "^## [0-9]+\.[0-9]+\.[0-9]+ " "$(mos_root)/CHANGELOG.md" | awk "{print \$2}")" "VERSION matches the newest CHANGELOG heading"
+  smoke_assert_grep "$(mos_root)/CHANGELOG.md" "^## $(head -1 "$(mos_root)/VERSION" | sed "s/\./\\./g") — [0-9]{4}-[0-9]{2}-[0-9]{2}\$"
 
   : # Keep this bare `:` as the LAST statement of run_smoke. Several
     # assertions here are "should NOT match" greps whose expected miss exits

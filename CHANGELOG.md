@@ -6,6 +6,17 @@ pulling (`git pull upstream main`). Machinery details live in `git log`.
 
 Every entry answers: **Action needed after pulling?**
 
+## 1.1.1 — 2026-09-17
+
+- **The pre-delivery diff review covers every delivery target, not only
+  registered-repo worktrees** (`workflow/phases/05-verify.md`,
+  `templates/work/04-verification.md`). When a step ships a change by a route
+  that leaves no worktree diff, the orchestrator assembles a review object
+  (the local diff plus every path written and its content read back from the
+  target) and hands it to the same reviewer; `N/A` is no longer a verdict and
+  the phase Exit needs a recorded verdict per target. Action needed after
+  pulling? No — instruction text only; in-flight items keep validating.
+
 ## 1.1.0 — 2026-09-16
 
 - **Export the run record to an experience store**
